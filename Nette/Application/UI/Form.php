@@ -72,8 +72,7 @@ class Form extends Nette\Forms\Form implements ISignalReceiver
 				array()
 			));
 
-			// fill-in the form with HTTP data
-			if ($this->isSubmitted()) {
+			if (iterator_count($this->getControls()) && $this->isSubmitted()) {
 				foreach ($this->getControls() as $control) {
 					if (!$control->isDisabled()) {
 						$control->loadHttpData();
@@ -98,8 +97,8 @@ class Form extends Nette\Forms\Form implements ISignalReceiver
 
 
 	/**
-	 * Internal: receives submitted HTTP data.
-	 * @return array
+	 * Internal: returns submitted HTTP data or NULL when form was not submitted.
+	 * @return array|NULL
 	 */
 	protected function receiveHttpData()
 	{

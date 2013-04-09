@@ -40,8 +40,8 @@ class Form extends Container
 		FILLED = ':filled',
 		VALID = ':valid';
 
-	// CSRF protection
-	const PROTECTION = 'Nette\Forms\Controls\HiddenField::validateEqual';
+	/** @deprecated CSRF protection */
+	const PROTECTION = Controls\CsrfProtection::PROTECTION;
 
 	// button
 	const SUBMITTED = ':submitted';
@@ -107,6 +107,8 @@ class Form extends Container
 	/** @var array */
 	private $errors = array();
 
+	/** @var Nette\Http\IRequest  used only by standalone form */
+	public $httpRequest;
 
 
 	/**
@@ -123,7 +125,7 @@ class Form extends Container
 		$this->monitor(__CLASS__);
 		if ($name !== NULL) {
 			$tracker = new Controls\HiddenField($name);
-			$tracker->unmonitor(__CLASS__);
+			$tracker->setOmitted()->unmonitor(__CLASS__);
 			$this[self::TRACKER_ID] = $tracker;
 		}
 		parent::__construct(NULL, $name);
@@ -212,20 +214,11 @@ class Form extends Container
 	 * Cross-Site Request Forgery (CSRF) form protection.
 	 * @param  string
 	 * @param  int
-	 * @return void
+	 * @return Controls\CsrfProtection
 	 */
 	public function addProtection($message = NULL, $timeout = NULL)
 	{
-		$session = $this->getSession()->getSection('Nette.Forms.Form/CSRF');
-		$key = "key$timeout";
-		if (isset($session->$key)) {
-			$token = $session->$key;
-		} else {
-			$session->$key = $token = Nette\Utils\Strings::random();
-		}
-		$session->setExpiration($timeout, $key);
-		$this[self::PROTECTOR_ID] = new Controls\HiddenField($token);
-		$this[self::PROTECTOR_ID]->addRule(self::PROTECTION, $message, $token);
+		return $this[self::PROTECTOR_ID] = new Controls\CsrfProtection($message, $timeout);
 	}
 
 
@@ -353,8 +346,8 @@ class Form extends Container
 	 */
 	final public function isSubmitted()
 	{
-		if ($this->submittedBy === NULL && count($this->getControls())) {
-			$this->submittedBy = (bool) $this->getHttpData();
+		if ($this->submittedBy === NULL) {
+			$this->getHttpData();
 		}
 		return $this->submittedBy;
 	}
@@ -394,7 +387,9 @@ class Form extends Container
 			if (!$this->isAnchored()) {
 				throw new Nette\InvalidStateException('Form is not anchored and therefore can not determine whether it was submitted.');
 			}
-			$this->httpData = $this->receiveHttpData();
+			$data = $this->receiveHttpData();
+			$this->httpData = (array) $data;
+			$this->submittedBy = is_array($data);
 		}
 		return $this->httpData;
 	}
@@ -430,46 +425,32 @@ class Form extends Container
 
 
 	/**
-	 * Internal: receives submitted HTTP data.
-	 * @return array
+	 * Internal: returns submitted HTTP data or NULL when form was not submitted.
+	 * @return array|NULL
 	 */
 	protected function receiveHttpData()
 	{
 		$httpRequest = $this->getHttpRequest();
 		if (strcasecmp($this->getMethod(), $httpRequest->getMethod())) {
-			return array();
+			return;
 		}
 
 		if ($httpRequest->isMethod('post')) {
 			$data = Nette\Utils\Arrays::mergeTree($httpRequest->getPost(), $httpRequest->getFiles());
 		} else {
 			$data = $httpRequest->getQuery();
+			if (!$data) {
+				return;
+			}
 		}
 
 		if ($tracker = $this->getComponent(self::TRACKER_ID, FALSE)) {
 			if (!isset($data[self::TRACKER_ID]) || $data[self::TRACKER_ID] !== $tracker->getValue()) {
-				return array();
+				return;
 			}
 		}
 
 		return $data;
-	}
-
-
-
-	/********************* data exchange ****************d*g**/
-
-
-
-	/**
-	 * Returns the values submitted by the form.
-	 * @return Nette\ArrayHash|array
-	 */
-	public function getValues($asArray = FALSE)
-	{
-		$values = parent::getValues($asArray);
-		unset($values[self::TRACKER_ID], $values[self::PROTECTOR_ID]);
-		return $values;
 	}
 
 
@@ -614,19 +595,14 @@ class Form extends Container
 	/**
 	 * @return Nette\Http\IRequest
 	 */
-	protected function getHttpRequest()
+	private function getHttpRequest()
 	{
-		return Nette\Environment::getHttpRequest();
-	}
-
-
-
-	/**
-	 * @return Nette\Http\Session
-	 */
-	protected function getSession()
-	{
-		return Nette\Environment::getSession();
+		if (!$this->httpRequest) {
+			$factory = new Nette\Http\RequestFactory;
+			$factory->setEncoding('UTF-8');
+			$this->httpRequest = $factory->createHttpRequest();
+		}
+		return $this->httpRequest;
 	}
 
 }

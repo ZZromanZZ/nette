@@ -33,7 +33,7 @@ use Nette,
  * @property-read bool $filled
  * @property-write $defaultValue
  * @property   bool $disabled
- * @property   bool $discarded
+ * @property   bool $omitted
  * @property-read Nette\Utils\Html $control
  * @property-read Nette\Utils\Html $label
  * @property-read Nette\Utils\Html $controlPrototype
@@ -66,7 +66,7 @@ abstract class BaseControl extends Nette\ComponentModel\Component implements ICo
 	private $disabled = FALSE;
 
 	/** @var bool */
-	private $discarded = FALSE;
+	private $omitted = FALSE;
 
 	/** @var string */
 	private $htmlId;
@@ -139,7 +139,7 @@ abstract class BaseControl extends Nette\ComponentModel\Component implements ICo
 				$name = substr_replace($name, '', strpos($name, ']'), 1) . ']';
 			}
 			if (is_numeric($name) || in_array($name, array('attributes','children','elements','focus','length','reset','style','submit','onsubmit'))) {
-				$name .= '_';
+				$name = '_' . $name;
 			}
 			$this->htmlName = $name;
 		}
@@ -344,7 +344,10 @@ abstract class BaseControl extends Nette\ComponentModel\Component implements ICo
 	public function loadHttpData()
 	{
 		$path = explode('[', strtr(str_replace(array('[]', ']'), '', $this->getHtmlName()), '.', '_'));
-		$this->setValue(Nette\Utils\Arrays::get($this->getForm()->getHttpData(), $path, NULL));
+		try {
+			$this->setValue(Nette\Utils\Arrays::get($this->getForm()->getHttpData(), $path, NULL));
+		} catch (\InvalidArgumentException $e) {
+		}
 	}
 
 
@@ -374,6 +377,7 @@ abstract class BaseControl extends Nette\ComponentModel\Component implements ICo
 
 
 	/**
+<<<<<<< HEAD
 	 * Set control value discarded or not.
 	 * @param  bool
 	 * @return BaseControl  provides a fluent interface
@@ -381,18 +385,36 @@ abstract class BaseControl extends Nette\ComponentModel\Component implements ICo
 	public function setDiscarded($value = TRUE)
 	{
 		$this->discarded = (bool) $value;
+=======
+	 * Sets whether control value is excluded from $form->getValues() result.
+	 * @param  bool
+	 * @return BaseControl  provides a fluent interface
+	 */
+	public function setOmitted($value = TRUE)
+	{
+		$this->omitted = (bool) $value;
+>>>>>>> upstream/master
 		return $this;
 	}
 
 
 
 	/**
+<<<<<<< HEAD
 	 * Is control value discarded from output?
 	 * @return bool
 	 */
 	public function isDiscarded()
 	{
 		return $this->discarded;
+=======
+	 * Is control value excluded from $form->getValues() result?
+	 * @return bool
+	 */
+	public function isOmitted()
+	{
+		return $this->omitted;
+>>>>>>> upstream/master
 	}
 
 
@@ -611,7 +633,10 @@ abstract class BaseControl extends Nette\ComponentModel\Component implements ICo
 	 */
 	public function validate()
 	{
-		$this->errors = $this->rules->validate();
+		$this->cleanErrors();
+		foreach ($this->rules->validate() as $error) {
+			$this->addError($error);
+		}
 	}
 
 

@@ -108,7 +108,11 @@ class Container extends Nette\ComponentModel\Container implements \ArrayAccess
 	{
 		$values = $asArray ? array() : new Nette\ArrayHash;
 		foreach ($this->getComponents() as $name => $control) {
+<<<<<<< HEAD
 			if ($control instanceof IControl && !$control->isDisabled() && !$control->isDiscarded() && !$control instanceof ISubmitterControl) {
+=======
+			if ($control instanceof IControl && !$control->isDisabled() && !$control->isOmitted() && !$control instanceof ISubmitterControl) {
+>>>>>>> upstream/master
 				$values[$name] = $control->getValue();
 
 			} elseif ($control instanceof Container) {

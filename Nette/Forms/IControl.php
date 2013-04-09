@@ -33,6 +33,7 @@ interface IControl
 	 * Sets control's value.
 	 * @param  mixed
 	 * @return void
+	 * @throws InvalidArgumentException
 	 */
 	function setValue($value);
 
@@ -60,10 +61,10 @@ interface IControl
 	function isDisabled();
 
 	/**
-	 * Is control value discarded from output?
+	 * Is control value excluded from $form->getValues() result?
 	 * @return bool
 	 */
-	function isDiscarded();
+	function isOmitted();
 
 	/**
 	 * Returns translated string.
