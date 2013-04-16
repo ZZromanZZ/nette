@@ -377,15 +377,6 @@ abstract class BaseControl extends Nette\ComponentModel\Component implements ICo
 
 
 	/**
-<<<<<<< HEAD
-	 * Set control value discarded or not.
-	 * @param  bool
-	 * @return BaseControl  provides a fluent interface
-	 */
-	public function setDiscarded($value = TRUE)
-	{
-		$this->discarded = (bool) $value;
-=======
 	 * Sets whether control value is excluded from $form->getValues() result.
 	 * @param  bool
 	 * @return BaseControl  provides a fluent interface
@@ -393,28 +384,18 @@ abstract class BaseControl extends Nette\ComponentModel\Component implements ICo
 	public function setOmitted($value = TRUE)
 	{
 		$this->omitted = (bool) $value;
->>>>>>> upstream/master
 		return $this;
 	}
 
 
 
 	/**
-<<<<<<< HEAD
-	 * Is control value discarded from output?
-	 * @return bool
-	 */
-	public function isDiscarded()
-	{
-		return $this->discarded;
-=======
 	 * Is control value excluded from $form->getValues() result?
 	 * @return bool
 	 */
 	public function isOmitted()
 	{
 		return $this->omitted;
->>>>>>> upstream/master
 	}
 
 
