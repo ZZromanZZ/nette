@@ -99,7 +99,7 @@ class SqliteDriver extends Nette\Object implements Nette\Database\ISupplementalD
 	/**
 	 * Normalizes result row.
 	 */
-	public function normalizeRow($row, $statement)
+	public function normalizeRow($row)
 	{
 		return $row;
 	}
@@ -227,6 +227,16 @@ class SqliteDriver extends Nette\Object implements Nette\Database\ISupplementalD
 			}
 		}
 		return array_values($keys);
+	}
+
+
+
+	/**
+	 * Returns associative array of detected types (IReflection::FIELD_*) in result set.
+	 */
+	public function getColumnTypes(\PDOStatement $statement)
+	{
+		return array();
 	}
 
 

@@ -98,21 +98,21 @@ class SqlBuilder extends Nette\Object
 
 	public function buildUpdateQuery()
 	{
-		return "UPDATE{$this->buildTopClause()} {$this->delimitedTable} SET ?" . $this->buildConditions();
+		return $this->tryDelimite("UPDATE{$this->buildTopClause()} {$this->tableName} SET ?" . $this->buildConditions());
 	}
 
 
 
 	public function buildDeleteQuery()
 	{
-		return "DELETE{$this->buildTopClause()} FROM {$this->delimitedTable}" . $this->buildConditions();
+		return $this->tryDelimite("DELETE{$this->buildTopClause()} FROM {$this->tableName}" . $this->buildConditions());
 	}
 
 
 
 	/**
 	 * Returns SQL query.
-	 * @param  list of columns
+	 * @param  string list of columns
 	 * @return string
 	 */
 	public function buildSelectQuery($columns = NULL)
@@ -147,7 +147,7 @@ class SqlBuilder extends Nette\Object
 		}
 
 		$queryJoins = $this->buildQueryJoins($joins);
-		$query = "{$querySelect} FROM {$this->delimitedTable}{$queryJoins}{$queryCondition}{$queryEnd}";
+		$query = "{$querySelect} FROM {$this->tableName}{$queryJoins}{$queryCondition}{$queryEnd}";
 
 		return $this->tryDelimite($query);
 	}
@@ -214,6 +214,7 @@ class SqlBuilder extends Nette\Object
 			array_shift($args);
 		}
 
+		$condition = trim($condition);
 		if ($placeholderCount === 0 && count($args) === 1) {
 			$condition .= ' ?';
 		} elseif ($placeholderCount !== count($args)) {
@@ -223,7 +224,7 @@ class SqlBuilder extends Nette\Object
 		$replace = NULL;
 		$placeholderNum = 0;
 		foreach ($args as $arg) {
-			preg_match('#(?:.*?\?.*?){' . $placeholderNum . '}(((?:&|\||^|~|\+|-|\*|/|%|\(|,|<|>|=|ALL|AND|ANY|BETWEEN|EXISTS|IN|LIKE|OR|NOT|SOME)\s*)?\?)#', $condition, $match, PREG_OFFSET_CAPTURE);
+			preg_match('#(?:.*?\?.*?){' . $placeholderNum . '}(((?:&|\||^|~|\+|-|\*|/|%|\(|,|<|>|=|ALL|AND|ANY|BETWEEN|EXISTS|IN|LIKE|OR|NOT|SOME)\s*)?\?)#s', $condition, $match, PREG_OFFSET_CAPTURE);
 			$hasOperator = ($match[1][0] === '?' && $match[1][1] === 0) ? TRUE : !empty($match[2][0]);
 
 			if ($arg === NULL) {
@@ -231,49 +232,49 @@ class SqlBuilder extends Nette\Object
 					throw new Nette\InvalidArgumentException('Column operator does not accept NULL argument.');
 				}
 				$replace = 'IS NULL';
-			} elseif ($arg instanceof Selection) {
-				$clone = clone $arg;
-				if (!$clone->getSqlBuilder()->select) {
-					try {
-						$clone->select($clone->getPrimary());
-					} catch (\LogicException $e) {
-						throw new Nette\InvalidArgumentException('Selection argument must have defined a select column.', 0, $e);
-					}
-				}
-
-				if ($this->driverName !== 'mysql') {
-					$replace = 'IN (' . $clone->getSql() . ')';
-					$this->parameters['where'] = array_merge($this->parameters['where'], $clone->getSqlBuilder()->parameters['where']);
-				} else {
-					$parameter = array();
-					foreach ($clone as $row) {
-						$parameter[] = array_values(iterator_to_array($row));
-					}
-
-					if (!$parameter) {
-						$replace = 'IN (NULL)';
-					}  else {
-						$replace = 'IN (?)';
-						$this->parameters['where'][] = $parameter;
-					}
-				}
-			} elseif ($arg instanceof SqlLiteral) {
-				$this->parameters['where'][] = $arg;
-			} elseif (is_array($arg)) {
+			} elseif (is_array($arg) || $arg instanceof Selection) {
 				if ($hasOperator) {
-					if (trim($match[2][0]) !== 'IN') {
+					if (trim($match[2][0]) === 'NOT') {
+						$match[2][0] = rtrim($match[2][0]) . ' IN ';
+					} elseif (trim($match[2][0]) !== 'IN') {
 						throw new Nette\InvalidArgumentException('Column operator does not accept array argument.');
 					}
 				} else {
 					$match[2][0] = 'IN ';
 				}
 
-				if (!$arg) {
-					$replace = $match[2][0] . '(NULL)';
-				} else {
-					$replace = $match[2][0] . '(?)';
-					$this->parameters['where'][] = $arg;
+				if ($arg instanceof Selection) {
+					$clone = clone $arg;
+					if (!$clone->getSqlBuilder()->select) {
+						try {
+							$clone->select($clone->getPrimary());
+						} catch (\LogicException $e) {
+							throw new Nette\InvalidArgumentException('Selection argument must have defined a select column.', 0, $e);
+						}
+					}
+
+					if ($this->driverName !== 'mysql') {
+						$arg = NULL;
+						$replace = $match[2][0] . '(' . $clone->getSql() . ')';
+						$this->parameters['where'] = array_merge($this->parameters['where'], $clone->getSqlBuilder()->parameters['where']);
+					} else {
+						$arg = array();
+						foreach ($clone as $row) {
+							$arg[] = array_values(iterator_to_array($row));
+						}
+					}
 				}
+
+				if ($arg !== NULL) {
+					if (!$arg) {
+						$replace = $match[2][0] . '(NULL)';
+					} else {
+						$replace = $match[2][0] . '(?)';
+						$this->parameters['where'][] = $arg;
+					}
+				}
+			} elseif ($arg instanceof SqlLiteral) {
+				$this->parameters['where'][] = $arg;
 			} else {
 				if ($hasOperator) {
 					$replace = $match[2][0] . '?';
@@ -483,7 +484,7 @@ class SqlBuilder extends Nette\Object
 		if ($this->order) {
 			$return .= ' ORDER BY ' . implode(', ', $this->order);
 		}
-		if ($this->limit !== NULL && $this->driverName !== 'oci' && $this->driverName !== 'dblib') {
+		if ($this->limit !== NULL && !in_array($this->driverName, array('oci', 'dblib', 'sqlsrv'), TRUE)) {
 			$return .= " LIMIT $this->limit";
 			if ($this->offset !== NULL) {
 				$return .= " OFFSET $this->offset";
@@ -496,7 +497,7 @@ class SqlBuilder extends Nette\Object
 
 	protected function buildTopClause()
 	{
-		if ($this->limit !== NULL && $this->driverName === 'dblib') {
+		if ($this->limit !== NULL && in_array($this->driverName, array('dblib', 'sqlsrv'), TRUE)) {
 			return " TOP ($this->limit)"; //! offset is not supported
 		}
 		return '';

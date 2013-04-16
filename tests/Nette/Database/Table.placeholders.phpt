@@ -10,7 +10,7 @@
 
 require __DIR__ . '/connect.inc.php'; // create $connection
 
-Nette\Database\Helpers::loadFromFile($connection, __DIR__ . "/{$driverName}-nette_test1.sql");
+Nette\Database\Helpers::loadFromFile($connection, __DIR__ . "/files/{$driverName}-nette_test1.sql");
 
 use Tester\Assert;
 use Nette\Database\SqlLiteral;
@@ -24,12 +24,16 @@ $connection->setSelectionFactory(new Nette\Database\Table\SelectionFactory($conn
 
 
 
+// Leave literals lower-cased, also not-delimiting them is tested.
 switch ($driverName) {
 	case 'mysql':
 		$literal = new SqlLiteral('year(now())');
 		break;
 	case 'pgsql':
 		$literal = new SqlLiteral('extract(year from now())::int');
+		break;
+	case 'sqlsrv':
+		$literal = new SqlLiteral('year(cast(current_timestamp as datetime))');
 		break;
 }
 

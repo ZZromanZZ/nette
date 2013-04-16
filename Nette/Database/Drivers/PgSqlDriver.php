@@ -98,7 +98,7 @@ class PgSqlDriver extends Nette\Object implements Nette\Database\ISupplementalDr
 	/**
 	 * Normalizes result row.
 	 */
-	public function normalizeRow($row, $statement)
+	public function normalizeRow($row)
 	{
 		return $row;
 	}
@@ -240,6 +240,16 @@ class PgSqlDriver extends Nette\Object implements Nette\Database\ISupplementalDr
 				AND co.contype = 'f'
 				AND cl.relname = {$this->connection->quote($table)}
 		")->fetchAll();
+	}
+
+
+
+	/**
+	 * Returns associative array of detected types (IReflection::FIELD_*) in result set.
+	 */
+	public function getColumnTypes(\PDOStatement $statement)
+	{
+		return Nette\Database\Helpers::detectTypes($statement);
 	}
 
 

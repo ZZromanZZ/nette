@@ -18,19 +18,19 @@ use Nette,
 
 
 /**
- * Represents a prepared statement / result set.
+ * Represents a result set.
  *
  * @author     David Grudl
  * @author     Jan Skrasek
  *
  * @property-read Connection $connection
  */
-class Statement extends Nette\Object implements \Iterator, IRowContainer
+class ResultSet extends Nette\Object implements \Iterator, IRowContainer
 {
 	/** @var Connection */
 	private $connection;
 
-	/** @var \PDOStatement */
+	/** @var \PDOStatement|NULL */
 	private $pdoStatement;
 
 	/** @var IRow */
@@ -45,17 +45,32 @@ class Statement extends Nette\Object implements \Iterator, IRowContainer
 	/** @var float */
 	private $time;
 
+	/** @var string */
+	private $queryString;
+
+	/** @var array */
+	private $params;
+
 	/** @var array */
 	private $types;
 
 
 
-	public function __construct(Connection $connection, $sqlQuery, array $params)
+	public function __construct(Connection $connection, $queryString, array $params)
 	{
+		$time = microtime(TRUE);
 		$this->connection = $connection;
-		$this->pdoStatement = $connection->getPdo()->prepare($sqlQuery);
-		$this->pdoStatement->setFetchMode(PDO::FETCH_ASSOC);
-		$this->execute($params);
+		$this->queryString = $queryString;
+		$this->params = $params;
+
+		if (substr($queryString, 0, 2) === '::') {
+			$connection->getPdo()->{substr($queryString, 2)}();
+		} elseif ($queryString !== NULL) {
+			$this->pdoStatement = $connection->getPdo()->prepare($queryString);
+			$this->pdoStatement->setFetchMode(PDO::FETCH_ASSOC);
+			$this->pdoStatement->execute($params);
+		}
+		$this->time = microtime(TRUE) - $time;
 	}
 
 
@@ -86,7 +101,17 @@ class Statement extends Nette\Object implements \Iterator, IRowContainer
 	 */
 	public function getQueryString()
 	{
-		return $this->pdoStatement->queryString;
+		return $this->queryString;
+	}
+
+
+
+	/**
+	 * @return array
+	 */
+	public function getParameters()
+	{
+		return $this->params;
 	}
 
 
@@ -96,7 +121,7 @@ class Statement extends Nette\Object implements \Iterator, IRowContainer
 	 */
 	public function getColumnCount()
 	{
-		return $this->pdoStatement->columnCount();
+		return $this->pdoStatement ? $this->pdoStatement->columnCount() : NULL;
 	}
 
 
@@ -106,7 +131,7 @@ class Statement extends Nette\Object implements \Iterator, IRowContainer
 	 */
 	public function getRowCount()
 	{
-		return $this->pdoStatement->rowCount();
+		return $this->pdoStatement ? $this->pdoStatement->rowCount() : NULL;
 	}
 
 
@@ -128,7 +153,11 @@ class Statement extends Nette\Object implements \Iterator, IRowContainer
 	 */
 	public function normalizeRow($row)
 	{
-		foreach ($this->detectColumnTypes() as $key => $type) {
+		if ($this->types === NULL) {
+			$this->types = (array) $this->connection->getSupplementalDriver()->getColumnTypes($this->pdoStatement);
+		}
+
+		foreach ($this->types as $key => $type) {
 			$value = $row[$key];
 			if ($value === NULL || $value === FALSE || $type === IReflection::FIELD_TEXT) {
 
@@ -136,7 +165,9 @@ class Statement extends Nette\Object implements \Iterator, IRowContainer
 				$row[$key] = is_float($tmp = $value * 1) ? $value : $tmp;
 
 			} elseif ($type === IReflection::FIELD_FLOAT) {
-				$value = strpos($value, '.') === FALSE ? $value : rtrim(rtrim($value, '0'), '.');
+				if (($pos = strpos($value, '.')) !== FALSE) {
+					$value = rtrim(rtrim($pos === 0 ? "0$value" : $value, '0'), '.');
+				}
 				$float = (float) $value;
 				$row[$key] = (string) $float === $value ? $float : $value;
 
@@ -149,44 +180,7 @@ class Statement extends Nette\Object implements \Iterator, IRowContainer
 			}
 		}
 
-		return $this->connection->getSupplementalDriver()->normalizeRow($row, $this);
-	}
-
-
-
-	private function detectColumnTypes()
-	{
-		if ($this->types === NULL) {
-			$this->types = array();
-			if ($this->connection->getSupplementalDriver()->isSupported(ISupplementalDriver::SUPPORT_COLUMNS_META)) { // workaround for PHP bugs #53782, #54695
-				$count = $this->pdoStatement->columnCount();
-				for ($col = 0; $col < $count; $col++) {
-					$meta = $this->pdoStatement->getColumnMeta($col);
-					if (isset($meta['native_type'])) {
-						$this->types[$meta['name']] = Helpers::detectType($meta['native_type']);
-					}
-				}
-			}
-		}
-		return $this->types;
-	}
-
-
-
-	/**
-	 * Executes statement.
-	 */
-	private function execute(array $params)
-	{
-		$time = microtime(TRUE);
-		try {
-			$this->pdoStatement->execute($params);
-		} catch (\PDOException $e) {
-			$e->queryString = $this->queryString;
-			throw $e;
-		}
-		$this->time = microtime(TRUE) - $time;
-		$this->connection->__call('onQuery', array($this, $params)); // $this->connection->onQuery() in PHP 5.3
+		return $this->connection->getSupplementalDriver()->normalizeRow($row);
 	}
 
 
@@ -213,7 +207,7 @@ class Statement extends Nette\Object implements \Iterator, IRowContainer
 	public function rewind()
 	{
 		if ($this->result === FALSE) {
-			throw new Nette\InvalidStateException('Nette\\Database\\Statement implements only one way iterator.');
+			throw new Nette\InvalidStateException('Nette\\Database\\ResultSet implements only one way iterator.');
 		}
 	}
 
@@ -260,7 +254,7 @@ class Statement extends Nette\Object implements \Iterator, IRowContainer
 	 */
 	public function fetch()
 	{
-		$data = $this->pdoStatement->fetch();
+		$data = $this->pdoStatement ? $this->pdoStatement->fetch() : NULL;
 		if (!$data) {
 			return FALSE;
 		}
@@ -268,6 +262,10 @@ class Statement extends Nette\Object implements \Iterator, IRowContainer
 		$row = new Row;
 		foreach ($this->normalizeRow($data) as $key => $value) {
 			$row->$key = $value;
+		}
+
+		if ($this->result === NULL && count($data) !== $this->pdoStatement->columnCount()) {
+			trigger_error('Found duplicate columns in database result set.', E_USER_NOTICE);
 		}
 
 		$this->resultKey++;

@@ -98,7 +98,7 @@ class OdbcDriver extends Nette\Object implements Nette\Database\ISupplementalDri
 	/**
 	 * Normalizes result row.
 	 */
-	public function normalizeRow($row, $statement)
+	public function normalizeRow($row)
 	{
 		return $row;
 	}
@@ -145,6 +145,16 @@ class OdbcDriver extends Nette\Object implements Nette\Database\ISupplementalDri
 	public function getForeignKeys($table)
 	{
 		throw new Nette\NotImplementedException;
+	}
+
+
+
+	/**
+	 * Returns associative array of detected types (IReflection::FIELD_*) in result set.
+	 */
+	public function getColumnTypes(\PDOStatement $statement)
+	{
+		return Nette\Database\Helpers::detectTypes($statement);
 	}
 
 

@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Test: Nette\Database\Statement::normalizeRow()
+ * Test: Nette\Database\ResultSet::normalizeRow()
  *
  * @author     David Grudl
  * @package    Nette\Database
@@ -11,7 +11,7 @@
 $query = 'postgresql';
 require __DIR__ . '/connect.inc.php'; // create $connection
 
-Nette\Database\Helpers::loadFromFile($connection, __DIR__ . '/pgsql-nette_test3.sql');
+Nette\Database\Helpers::loadFromFile($connection, __DIR__ . '/files/pgsql-nette_test3.sql');
 
 
 
@@ -127,4 +127,4 @@ $res = $connection->query('SELECT "integer" AS a, "text" AS a FROM types');
 
 Assert::equal( array(
 	'a' => 'a',
-), (array) $res->fetch() );
+), (array) @$res->fetch() );

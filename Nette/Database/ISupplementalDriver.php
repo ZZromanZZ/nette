@@ -67,10 +67,9 @@ interface ISupplementalDriver
 	/**
 	 * Normalizes result row.
 	 * @param  array
-	 * @param  Statement
 	 * @return array
 	 */
-	function normalizeRow($row, $statement);
+	function normalizeRow($row);
 
 
 	/********************* reflection ****************d*g**/
@@ -102,6 +101,12 @@ interface ISupplementalDriver
 	 * @return array
 	 */
 	function getForeignKeys($table);
+
+	/**
+	 * Returns associative array of detected types (IReflection::FIELD_*) in result set.
+	 * @return array
+	 */
+	function getColumnTypes(\PDOStatement $statement);
 
 	/**
 	 * Cheks if driver supports specific property

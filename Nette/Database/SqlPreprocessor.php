@@ -51,24 +51,32 @@ class SqlPreprocessor extends Nette\Object
 
 
 	/**
-	 * @param  string
 	 * @param  array
 	 * @return array of [sql, params]
 	 */
-	public function process($sql, $params)
+	public function process($params)
 	{
 		$this->params = $params;
 		$this->counter = 0;
 		$this->remaining = array();
 		$this->arrayMode = 'assoc';
-
-		$sql = Nette\Utils\Strings::replace($sql, '~\'.*?\'|".*?"|\?|\b(?:INSERT|REPLACE|UPDATE)\b~si', array($this, 'callback'));
+		$res = array();
 
 		while ($this->counter < count($params)) {
-			$sql .= ' ' . $this->formatValue($params[$this->counter++]);
+			$param = $params[$this->counter++];
+
+			if (($this->counter === 2 && count($params) === 2) || !is_scalar($param)) {
+				$res[] = $this->formatValue($param);
+			} else {
+				$res[] = Nette\Utils\Strings::replace(
+					$param,
+					'~\'.*?\'|".*?"|\?|\b(?:INSERT|REPLACE|UPDATE|WHERE|HAVING|ORDER BY|GROUP BY)\b~si',
+					array($this, 'callback')
+				);
+			}
 		}
 
-		return array($sql, $this->remaining);
+		return array(implode(' ', $res), $this->remaining);
 	}
 
 
@@ -81,10 +89,22 @@ class SqlPreprocessor extends Nette\Object
 			return $m;
 
 		} elseif ($m === '?') { // placeholder
+			if ($this->counter >= count($this->params)) {
+				throw new Nette\InvalidArgumentException('There are more placeholders than passed parameters.');
+			}
 			return $this->formatValue($this->params[$this->counter++]);
 
-		} else { // INSERT, REPLACE, UPDATE
-			$this->arrayMode = strtoupper($m) === 'UPDATE' ? 'assoc' : 'values';
+		} else { // command
+			static $cmds = array(
+				'INSERT' => 'values',
+				'REPLACE' => 'values',
+				'UPDATE' => 'assoc',
+				'WHERE' => 'and',
+				'HAVING' => 'and',
+				'ORDER BY' => 'order',
+				'GROUP BY' => 'order',
+			);
+			$this->arrayMode = $cmds[strtoupper($m)];
 			return $m;
 		}
 	}
@@ -120,6 +140,10 @@ class SqlPreprocessor extends Nette\Object
 		} elseif (is_array($value) || $value instanceof \Traversable) {
 			$vx = $kx = array();
 
+			if ($value instanceof \Traversable) {
+				$value = iterator_to_array($value);
+			}
+
 			if (isset($value[0])) { // non-associative; value, value, value
 				foreach ($value as $v) {
 					$vx[] = $this->formatValue($v);
@@ -145,6 +169,24 @@ class SqlPreprocessor extends Nette\Object
 					$vx[] = $this->formatValue($v);
 				}
 				return '(' . implode(', ', $vx) . ')';
+
+			} elseif ($this->arrayMode === 'and') { // (key [operator] value) AND ...
+				foreach ($value as $k => $v) {
+					$k = $this->driver->delimite($k);
+					if (is_array($v)) {
+						$vx[] = $v ? ($k . ' IN (' . $this->formatValue(array_values($v)) . ')') : '1=0';
+					} else {
+						$v = $this->formatValue($v);
+						$vx[] = $k . ($v === 'NULL' ? ' IS ' : ' = ') . $v;
+					}
+				}
+				return $value ? '(' . implode(') AND (', $vx) . ')' : '1=1';
+
+			} elseif ($this->arrayMode === 'order') { // key, key DESC, ...
+				foreach ($value as $k => $v) {
+					$vx[] = $this->driver->delimite($k) . ($v > 0 ? '' : ' DESC');
+				}
+				return implode(', ', $vx);
 			}
 
 		} elseif ($value instanceof \DateTime) {

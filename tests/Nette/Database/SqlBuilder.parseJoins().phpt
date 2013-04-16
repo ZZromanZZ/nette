@@ -10,7 +10,7 @@
 
 require __DIR__ . '/connect.inc.php'; // create $connection
 
-Nette\Database\Helpers::loadFromFile($connection, __DIR__ . "/{$driverName}-nette_test2.sql");
+Nette\Database\Helpers::loadFromFile($connection, __DIR__ . "/files/{$driverName}-nette_test2.sql");
 
 use Tester\Assert;
 use Nette\Database\Reflection\DiscoveredReflection;
@@ -40,9 +40,20 @@ $query = 'WHERE :nusers_ntopics.topic.priorit.id IS NULL';
 $sqlBuilder->parseJoins($joins, $query);
 $join = $sqlBuilder->buildQueryJoins($joins);
 Assert::equal('WHERE priorit.id IS NULL', $query);
-Assert::equal(
-	'LEFT JOIN nusers_ntopics ON nUsers.nUserId = nusers_ntopics.nUserId ' .
-	'LEFT JOIN ntopics AS topic ON nusers_ntopics.nTopicId = topic.nTopicId ' .
-	'LEFT JOIN npriorities AS priorit ON topic.nPriorityId = priorit.nPriorityId',
-	trim($join)
-);
+
+$tables = $connection->getSupplementalDriver()->getTables();
+if (!in_array($tables[0]['name'], array('npriorities', 'ntopics', 'nusers', 'nusers_ntopics', 'nusers_ntopics_alt'), TRUE)) {
+	Assert::equal(
+		'LEFT JOIN nUsers_nTopics AS nusers_ntopics ON nUsers.nUserId = nusers_ntopics.nUserId ' .
+		'LEFT JOIN nTopics AS topic ON nusers_ntopics.nTopicId = topic.nTopicId ' .
+		'LEFT JOIN nPriorities AS priorit ON topic.nPriorityId = priorit.nPriorityId',
+		trim($join)
+	);
+} else {
+	Assert::equal(
+		'LEFT JOIN nusers_ntopics ON nUsers.nUserId = nusers_ntopics.nUserId ' .
+		'LEFT JOIN ntopics AS topic ON nusers_ntopics.nTopicId = topic.nTopicId ' .
+		'LEFT JOIN npriorities AS priorit ON topic.nPriorityId = priorit.nPriorityId',
+		trim($join)
+	);
+}

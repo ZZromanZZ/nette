@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Test: Nette\Database\Statement: Fetch all.
+ * Test: Nette\Database\ResultSet: Fetch all.
  *
  * @author     David Grudl
  * @package    Nette\Database
@@ -10,13 +10,14 @@
 
 require __DIR__ . '/connect.inc.php'; // create $connection
 
-Nette\Database\Helpers::loadFromFile($connection, __DIR__ . "/{$driverName}-nette_test1.sql");
+Nette\Database\Helpers::loadFromFile($connection, __DIR__ . "/files/{$driverName}-nette_test1.sql");
 
 
 
 $res = $connection->query('SELECT id FROM book ORDER BY id');
 
-Assert::same(4, $res->rowCount);
+// sqlsrv: for real row count, PDO::ATTR_CURSOR => PDO::CURSOR_SCROLL must be used when $pdo->prepare(). Nette\Database doesn't allowes it now.
+Assert::same($driverName === 'sqlsrv' ? -1 : 4, $res->rowCount);
 Assert::same(1, $res->columnCount);
 Assert::same('SELECT id FROM book ORDER BY id', $res->getQueryString());
 

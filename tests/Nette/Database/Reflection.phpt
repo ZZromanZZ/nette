@@ -10,7 +10,7 @@
 
 require __DIR__ . '/connect.inc.php'; // create $connection
 
-Nette\Database\Helpers::loadFromFile($connection, __DIR__ . "/{$driverName}-nette_test1.sql");
+Nette\Database\Helpers::loadFromFile($connection, __DIR__ . "/files/{$driverName}-nette_test1.sql");
 
 
 
@@ -89,6 +89,12 @@ switch ($driverName) {
 		$expectedColumns[1]['size'] = NULL;
 		$expectedColumns[2]['size'] = NULL;
 		break;
+
+	case 'sqlsrv':
+		$expectedColumns[0]['size'] = NULL;
+		$expectedColumns[1]['size'] = NULL;
+		$expectedColumns[2]['size'] = NULL;
+		break;
 }
 
 Assert::same($expectedColumns, $columns);
@@ -110,6 +116,21 @@ switch ($driverName) {
 			),
 		);
 		break;
+
+	case 'sqlsrv':
+		$expectedIndexes = array(
+			array(
+				'name' => 'PK_book_tag',
+				'unique' => TRUE,
+				'primary' => TRUE,
+				'columns' => array(
+					'book_id',
+					'tag_id',
+				),
+			),
+		);
+		break;
+
 	case 'mysql':
 	default:
 		$expectedIndexes = array(

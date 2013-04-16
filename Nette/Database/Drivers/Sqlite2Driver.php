@@ -36,9 +36,9 @@ class Sqlite2Driver extends SqliteDriver
 	/**
 	 * Normalizes result row.
 	 */
-	public function normalizeRow($row, $statement)
+	public function normalizeRow($row)
 	{
-		foreach ($iterator as $key => $value) {
+		foreach ($row as $key => $value) {
 			unset($row[$key]);
 			if ($key[0] === '[' || $key[0] === '"') {
 				$key = substr($key, 1, -1);

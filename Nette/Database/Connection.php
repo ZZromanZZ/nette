@@ -46,7 +46,7 @@ class Connection extends Nette\Object
 	/** @var PDO */
 	private $pdo;
 
-	/** @var array of function(Statement $result, $params); Occurs after query is executed */
+	/** @var array of function(Connection $connection, ResultSet|Exception $result); Occurs after query is executed */
 	public $onQuery;
 
 
@@ -74,10 +74,10 @@ class Connection extends Nette\Object
 		$this->pdo = new PDO($this->params[0], $this->params[1], $this->params[2], $this->options);
 		$this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-		$driverClass = empty($this->options['driverClass'])
+		$class = empty($this->options['driverClass'])
 			? 'Nette\Database\Drivers\\' . ucfirst(str_replace('sql', 'Sql', $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME))) . 'Driver'
 			: $this->options['driverClass'];
-		$this->driver = new $driverClass($this, $this->options);
+		$this->driver = new $class($this, $this->options);
 		$this->preprocessor = new SqlPreprocessor($this);
 	}
 
@@ -109,26 +109,26 @@ class Connection extends Nette\Object
 
 
 
-	/** @return bool */
+	/** @return void */
 	public function beginTransaction()
 	{
-		return $this->getPdo()->beginTransaction();
+		$this->queryArgs('::beginTransaction', array());
 	}
 
 
 
-	/** @return bool */
+	/** @return void */
 	public function commit()
 	{
-		return $this->getPdo()->commit();
+		$this->queryArgs('::commit', array());
 	}
 
 
 
-	/** @return bool */
+	/** @return void */
 	public function rollBack()
 	{
-		return $this->getPdo()->rollBack();
+		$this->queryArgs('::rollBack', array());
 	}
 
 
@@ -160,7 +160,7 @@ class Connection extends Nette\Object
 	 * Generates and executes SQL query.
 	 * @param  string  statement
 	 * @param  mixed   [parameters, ...]
-	 * @return Statement
+	 * @return ResultSet
 	 */
 	public function query($statement)
 	{
@@ -173,15 +173,25 @@ class Connection extends Nette\Object
 	/**
 	 * @param  string  statement
 	 * @param  array
-	 * @return Statement
+	 * @return ResultSet
 	 */
 	public function queryArgs($statement, array $params)
 	{
 		$this->connect();
 		if ($params) {
-			list($statement, $params) = $this->preprocessor->process($statement, $params);
+			array_unshift($params, $statement);
+			list($statement, $params) = $this->preprocessor->process($params);
 		}
-		return new Statement($this, $statement, $params);
+
+		try {
+			$result = new ResultSet($this, $statement, $params);
+		} catch (\PDOException $e) {
+			$e->queryString = $statement;
+			$this->onQuery($this, $e);
+			throw $e;
+		}
+		$this->onQuery($this, $result);
+		return $result;
 	}
 
 

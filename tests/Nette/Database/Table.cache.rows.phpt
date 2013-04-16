@@ -10,7 +10,7 @@
 
 require __DIR__ . '/connect.inc.php'; // create $connection
 
-Nette\Database\Helpers::loadFromFile($connection, __DIR__ . "/{$driverName}-nette_test1.sql");
+Nette\Database\Helpers::loadFromFile($connection, __DIR__ . "/files/{$driverName}-nette_test1.sql");
 
 $cacheStorage = new Nette\Caching\Storages\MemoryStorage;
 $connection->setSelectionFactory(new Nette\Database\Table\SelectionFactory(
@@ -64,11 +64,11 @@ Assert::equal(3, $books[2]['id']);
 
 
 $row = $connection->table('author')->insert(array(
-	'id' => 14,
 	'name' => 'Eddard Stark',
 	'web' => 'http://example.com',
-));  // INSERT INTO `author` (`id`, `name`, `web`) VALUES (14, 'Eddard Stark', 'http://example.com')
+));  // INSERT INTO `author` (`name`, `web`) VALUES ('Eddard Stark', 'http://example.com')
 Assert::true(is_array($row->toArray()));
+// id = 14
 
 
 $row = $connection->table('author')->where('id', 14)->fetch();

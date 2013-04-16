@@ -11,7 +11,7 @@
 
 require __DIR__ . '/connect.inc.php'; // create $connection
 
-Nette\Database\Helpers::loadFromFile($connection, __DIR__ . "/{$driverName}-nette_test1.sql");
+Nette\Database\Helpers::loadFromFile($connection, __DIR__ . "/files/{$driverName}-nette_test1.sql");
 
 
 
@@ -34,6 +34,11 @@ switch ($driverName) {
 	case 'pgsql':
 		Assert::same('SELECT "tag".* FROM "book_tag" LEFT JOIN "tag" ON "book_tag"."tag_id" = "tag"."id" WHERE ("book_id" = ?)', $joinSql);
 		break;
+
+	case 'sqlsrv':
+		Assert::same('SELECT [tag].* FROM [book_tag] LEFT JOIN [tag] ON [book_tag].[tag_id] = [tag].[id] WHERE ([book_id] = ?)', $joinSql);
+		break;
+
 	case 'mysql':
 	default:
 		Assert::same('SELECT `tag`.* FROM `book_tag` LEFT JOIN `tag` ON `book_tag`.`tag_id` = `tag`.`id` WHERE (`book_id` = ?)', $joinSql);
@@ -47,6 +52,11 @@ switch ($driverName) {
 	case 'pgsql':
 		Assert::same('SELECT "Tag"."id" FROM "book_tag" LEFT JOIN "Tag" ON "book_tag"."Tag_id" = "Tag"."id" WHERE ("book_id" = ?)', $joinSql);
 		break;
+
+	case 'sqlsrv':
+		Assert::same('SELECT [Tag].[id] FROM [book_tag] LEFT JOIN [Tag] ON [book_tag].[Tag_id] = [Tag].[id] WHERE ([book_id] = ?)', $joinSql);
+		break;
+
 	case 'mysql':
 	default:
 		Assert::same('SELECT `Tag`.`id` FROM `book_tag` LEFT JOIN `Tag` ON `book_tag`.`Tag_id` = `Tag`.`id` WHERE (`book_id` = ?)', $joinSql);

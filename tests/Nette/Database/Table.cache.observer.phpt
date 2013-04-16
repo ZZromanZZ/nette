@@ -8,11 +8,11 @@
  * @dataProvider? databases.ini
  */
 
-use Nette\Database\Statement;
+use Nette\Database\ResultSet;
 
 require __DIR__ . '/connect.inc.php'; // create $connection
 
-Nette\Database\Helpers::loadFromFile($connection, __DIR__ . "/{$driverName}-nette_test1.sql");
+Nette\Database\Helpers::loadFromFile($connection, __DIR__ . "/files/{$driverName}-nette_test1.sql");
 
 class CacheMock implements Nette\Caching\IStorage
 {
@@ -60,9 +60,10 @@ $connection->setSelectionFactory(new Nette\Database\Table\SelectionFactory(
 
 
 $queries = 0;
-$connection->onQuery[] = function(Statement $query) use (& $queries) {
-	if (preg_match('#SHOW|CONSTRAINT_NAME|pg_catalog#i', $query->queryString)) return;
-	$queries++;
+$connection->onQuery[] = function($connection, ResultSet $result) use (& $queries) {
+	if (!preg_match('#SHOW|CONSTRAINT_NAME|pg_catalog|sys\.|SET#i', $result->queryString)) {
+		$queries++;
+	}
 };
 
 $authors = $connection->table('author');

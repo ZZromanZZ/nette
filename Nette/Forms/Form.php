@@ -124,8 +124,8 @@ class Form extends Container
 
 		$this->monitor(__CLASS__);
 		if ($name !== NULL) {
-			$tracker = new Controls\HiddenField($name);
-			$tracker->setOmitted()->unmonitor(__CLASS__);
+			$tracker = new Controls\HiddenField;
+			$tracker->setValue($name)->setOmitted()->unmonitor(__CLASS__);
 			$this[self::TRACKER_ID] = $tracker;
 		}
 		parent::__construct(NULL, $name);
@@ -603,6 +603,22 @@ class Form extends Container
 			$this->httpRequest = $factory->createHttpRequest();
 		}
 		return $this->httpRequest;
+	}
+
+
+
+	/**
+	 * @return array
+	 */
+	public function getToggles()
+	{
+		$toggles = array();
+		foreach ($this->getControls() as $control) {
+			foreach ($control->getRules()->getToggles(TRUE) as $id => $hide) {
+   				$toggles[$id] = empty($toggles[$id]) ? $hide : TRUE;
+			}
+		}
+		return $toggles;
 	}
 
 }

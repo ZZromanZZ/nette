@@ -11,7 +11,7 @@
 
 require __DIR__ . '/connect.inc.php'; // create $connection
 
-Nette\Database\Helpers::loadFromFile($connection, __DIR__ . "/{$driverName}-nette_test1.sql");
+Nette\Database\Helpers::loadFromFile($connection, __DIR__ . "/files/{$driverName}-nette_test1.sql");
 
 
 
@@ -31,6 +31,19 @@ switch ($driverName) {
 		Assert::same('hello("world")', $tryDelimite->invoke($sqlBuilder, 'hello(world)'));
 		Assert::same('"hello"', $tryDelimite->invoke($sqlBuilder, '"hello"'));
 		break;
+
+	case 'sqlsrv':
+		Assert::same('[hello]', $tryDelimite->invoke($sqlBuilder, 'hello'));
+		Assert::same(' [hello] ', $tryDelimite->invoke($sqlBuilder, ' hello '));
+		Assert::same('HELLO', $tryDelimite->invoke($sqlBuilder, 'HELLO'));
+		Assert::same('[HellO]', $tryDelimite->invoke($sqlBuilder, 'HellO'));
+		Assert::same('[hello].[world]', $tryDelimite->invoke($sqlBuilder, 'hello.world'));
+		Assert::same('[hello] [world]', $tryDelimite->invoke($sqlBuilder, 'hello world'));
+		Assert::same('HELLO([world])', $tryDelimite->invoke($sqlBuilder, 'HELLO(world)'));
+		Assert::same('hello([world])', $tryDelimite->invoke($sqlBuilder, 'hello(world)'));
+		Assert::same('[hello]', $tryDelimite->invoke($sqlBuilder, '[hello]'));
+		break;
+
 	case 'mysql':
 	default:
 		Assert::same('`hello`', $tryDelimite->invoke($sqlBuilder, 'hello'));
