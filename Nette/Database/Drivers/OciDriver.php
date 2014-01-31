@@ -2,17 +2,12 @@
 
 /**
  * This file is part of the Nette Framework (http://nette.org)
- *
  * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
- *
- * For the full copyright and license information, please view
- * the file license.txt that was distributed with this source code.
  */
 
 namespace Nette\Database\Drivers;
 
 use Nette;
-
 
 
 /**
@@ -29,7 +24,6 @@ class OciDriver extends Nette\Object implements Nette\Database\ISupplementalDriv
 	private $fmtDateTime;
 
 
-
 	public function __construct(Nette\Database\Connection $connection, array $options)
 	{
 		$this->connection = $connection;
@@ -37,9 +31,7 @@ class OciDriver extends Nette\Object implements Nette\Database\ISupplementalDriv
 	}
 
 
-
 	/********************* SQL ****************d*g**/
-
 
 
 	/**
@@ -52,7 +44,6 @@ class OciDriver extends Nette\Object implements Nette\Database\ISupplementalDriv
 	}
 
 
-
 	/**
 	 * Formats boolean for use in a SQL statement.
 	 */
@@ -62,15 +53,13 @@ class OciDriver extends Nette\Object implements Nette\Database\ISupplementalDriv
 	}
 
 
-
 	/**
 	 * Formats date-time for use in a SQL statement.
 	 */
-	public function formatDateTime(\DateTime $value)
+	public function formatDateTime(/*\DateTimeInterface*/ $value)
 	{
 		return $value->format($this->fmtDateTime);
 	}
-
 
 
 	/**
@@ -82,11 +71,10 @@ class OciDriver extends Nette\Object implements Nette\Database\ISupplementalDriv
 	}
 
 
-
 	/**
 	 * Injects LIMIT/OFFSET to the SQL query.
 	 */
-	public function applyLimit(&$sql, $limit, $offset)
+	public function applyLimit(& $sql, $limit, $offset)
 	{
 		if ($offset > 0) {
 			// see http://www.oracle.com/technology/oramag/oracle/06-sep/o56asktom.html
@@ -100,7 +88,6 @@ class OciDriver extends Nette\Object implements Nette\Database\ISupplementalDriv
 	}
 
 
-
 	/**
 	 * Normalizes result row.
 	 */
@@ -110,9 +97,7 @@ class OciDriver extends Nette\Object implements Nette\Database\ISupplementalDriv
 	}
 
 
-
 	/********************* reflection ****************d*g**/
-
 
 
 	/**
@@ -133,7 +118,6 @@ class OciDriver extends Nette\Object implements Nette\Database\ISupplementalDriv
 	}
 
 
-
 	/**
 	 * Returns metadata for all columns in a table.
 	 */
@@ -141,7 +125,6 @@ class OciDriver extends Nette\Object implements Nette\Database\ISupplementalDriv
 	{
 		throw new Nette\NotImplementedException;
 	}
-
 
 
 	/**
@@ -153,7 +136,6 @@ class OciDriver extends Nette\Object implements Nette\Database\ISupplementalDriv
 	}
 
 
-
 	/**
 	 * Returns metadata for all foreign keys in a table.
 	 */
@@ -161,7 +143,6 @@ class OciDriver extends Nette\Object implements Nette\Database\ISupplementalDriv
 	{
 		throw new Nette\NotImplementedException;
 	}
-
 
 
 	/**
@@ -173,13 +154,12 @@ class OciDriver extends Nette\Object implements Nette\Database\ISupplementalDriv
 	}
 
 
-
 	/**
 	 * @return bool
 	 */
 	public function isSupported($item)
 	{
-		return $item === self::SUPPORT_COLUMNS_META || $item === self::SUPPORT_SEQUENCE;
+		return $item === self::SUPPORT_SEQUENCE || $item === self::SUPPORT_SUBSELECT;
 	}
 
 }

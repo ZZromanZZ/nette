@@ -2,17 +2,12 @@
 
 /**
  * This file is part of the Nette Framework (http://nette.org)
- *
  * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
- *
- * For the full copyright and license information, please view
- * the file license.txt that was distributed with this source code.
  */
 
 namespace Nette\Forms\Controls;
 
 use Nette;
-
 
 
 /**
@@ -22,36 +17,29 @@ class CsrfProtection extends HiddenField
 {
 	const PROTECTION = 'Nette\Forms\Controls\CsrfProtection::validateCsrf';
 
-	/** @var int */
-	private $timeout;
-
 	/** @var Nette\Http\Session */
 	public $session;
-
 
 
 	/**
 	 * @param string
 	 * @param int
 	 */
-	public function __construct($message, $timeout)
+	public function __construct($message)
 	{
 		parent::__construct();
-		$this->timeout = $timeout;
 		$this->setOmitted()->addRule(self::PROTECTION, $message);
 		$this->monitor('Nette\Application\UI\Presenter');
 	}
-
 
 
 	protected function attached($parent)
 	{
 		parent::attached($parent);
 		if (!$this->session && $parent instanceof Nette\Application\UI\Presenter) {
-			$this->session = $parent->getContext()->getByType('Nette\Http\Session');
+			$this->session = $parent->getSession();
 		}
 	}
-
 
 
 	/**
@@ -59,15 +47,24 @@ class CsrfProtection extends HiddenField
 	 */
 	public function getToken()
 	{
-		$key = 'key' . $this->timeout;
 		$session = $this->getSession()->getSection(__CLASS__);
-		$session->setExpiration($this->timeout, $key);
-		if (!isset($session->$key)) {
-			$session->$key = Nette\Utils\Strings::random();
+		if (!isset($session->token)) {
+			$session->token = Nette\Utils\Random::generate();
 		}
-		return $session->$key;
+		return $session->token;
 	}
 
+
+	/**
+	 * @return string
+	 */
+	private function generateToken($random = NULL)
+	{
+		if ($random === NULL) {
+			$random = Nette\Utils\Random::generate(10);
+		}
+		return $random . base64_encode(sha1($this->getToken() . $random, TRUE));
+	}
 
 
 	/**
@@ -77,9 +74,8 @@ class CsrfProtection extends HiddenField
 	 */
 	public function getControl()
 	{
-		return parent::getControl()->value($this->getToken());
+		return parent::getControl()->value($this->generateToken());
 	}
-
 
 
 	/**
@@ -87,13 +83,12 @@ class CsrfProtection extends HiddenField
 	 */
 	public static function validateCsrf(CsrfProtection $control)
 	{
-		return (string) $control->getValue() === (string) $control->getToken();
+		$value = $control->getValue();
+		return $control->generateToken(substr($value, 0, 10)) === $value;
 	}
 
 
-
 	/********************* backend ****************d*g**/
-
 
 
 	/**

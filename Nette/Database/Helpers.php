@@ -2,17 +2,12 @@
 
 /**
  * This file is part of the Nette Framework (http://nette.org)
- *
  * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
- *
- * For the full copyright and license information, please view
- * the file license.txt that was distributed with this source code.
  */
 
 namespace Nette\Database;
 
 use Nette;
-
 
 
 /**
@@ -30,14 +25,13 @@ class Helpers
 		'^_' => IReflection::FIELD_TEXT, // PostgreSQL arrays
 		'BYTEA|BLOB|BIN' => IReflection::FIELD_BINARY,
 		'TEXT|CHAR|POINT|INTERVAL' => IReflection::FIELD_TEXT,
-		'YEAR|BYTE|COUNTER|SERIAL|INT|LONG|SHORT' => IReflection::FIELD_INTEGER,
+		'YEAR|BYTE|COUNTER|SERIAL|INT|LONG|SHORT|^TINY$' => IReflection::FIELD_INTEGER,
 		'CURRENCY|REAL|MONEY|FLOAT|DOUBLE|DECIMAL|NUMERIC|NUMBER' => IReflection::FIELD_FLOAT,
 		'^TIME$' => IReflection::FIELD_TIME,
 		'TIME' => IReflection::FIELD_DATETIME, // DATETIME, TIMESTAMP
 		'DATE' => IReflection::FIELD_DATE,
 		'BOOL' => IReflection::FIELD_BOOL,
 	);
-
 
 
 	/**
@@ -77,7 +71,6 @@ class Helpers
 	}
 
 
-
 	/**
 	 * Returns syntax highlighted SQL command.
 	 * @param  string
@@ -86,7 +79,7 @@ class Helpers
 	public static function dumpSql($sql, array $params = NULL)
 	{
 		static $keywords1 = 'SELECT|(?:ON\s+DUPLICATE\s+KEY)?UPDATE|INSERT(?:\s+INTO)?|REPLACE(?:\s+INTO)?|DELETE|CALL|UNION|FROM|WHERE|HAVING|GROUP\s+BY|ORDER\s+BY|LIMIT|OFFSET|SET|VALUES|LEFT\s+JOIN|INNER\s+JOIN|TRUNCATE';
-		static $keywords2 = 'ALL|DISTINCT|DISTINCTROW|IGNORE|AS|USING|ON|AND|OR|IN|IS|NOT|NULL|LIKE|RLIKE|REGEXP|TRUE|FALSE';
+		static $keywords2 = 'ALL|DISTINCT|DISTINCTROW|IGNORE|AS|USING|ON|AND|OR|IN|IS|NOT|NULL|[RI]?LIKE|REGEXP|TRUE|FALSE';
 
 		// insert new lines
 		$sql = " $sql ";
@@ -116,8 +109,8 @@ class Helpers
 		}, $sql);
 
 		// parameters
-		$i = 0;
-		$sql = preg_replace_callback('#\?#', function() use ($params, & $i) {
+		$sql = preg_replace_callback('#\?#', function() use ($params) {
+			static $i = 0;
 			if (!isset($params[$i])) {
 				return '?';
 			}
@@ -144,7 +137,6 @@ class Helpers
 	}
 
 
-
 	/**
 	 * Common column type detection.
 	 * @return array
@@ -161,7 +153,6 @@ class Helpers
 		}
 		return $types;
 	}
-
 
 
 	/**
@@ -183,7 +174,6 @@ class Helpers
 		}
 		return $cache[$type];
 	}
-
 
 
 	/**
@@ -219,13 +209,50 @@ class Helpers
 	}
 
 
-
-	public static function createDebugPanel($connection, $explain = TRUE)
+	public static function createDebugPanel($connection, $explain = TRUE, $name = NULL)
 	{
 		$panel = new Nette\Database\Diagnostics\ConnectionPanel($connection);
 		$panel->explain = $explain;
-		Nette\Diagnostics\Debugger::$bar->addPanel($panel);
+		$panel->name = $name;
+		Nette\Diagnostics\Debugger::getBar()->addPanel($panel);
 		return $panel;
+	}
+
+
+	/**
+	 * Reformat source to key -> value pairs.
+	 * @return array
+	 */
+	public static function toPairs(array $rows, $key = NULL, $value = NULL)
+	{
+		if (!$rows) {
+			return array();
+		}
+
+		$keys = array_keys((array) reset($rows));
+		if (!count($keys)) {
+			throw new \LogicException('Result set does not contain any column.');
+
+		} elseif ($key === NULL && $value === NULL) {
+			if (count($keys) === 1) {
+				list($value) = $keys;
+			} else {
+				list($key, $value) = $keys;
+			}
+		}
+
+		$return = array();
+		if ($key === NULL) {
+			foreach ($rows as $row) {
+				$return[] = ($value === NULL ? $row : $row[$value]);
+			}
+		} else {
+			foreach ($rows as $row) {
+				$return[is_object($row[$key]) ? (string) $row[$key] : $row[$key]] = ($value === NULL ? $row : $row[$value]);
+			}
+		}
+
+		return $return;
 	}
 
 }

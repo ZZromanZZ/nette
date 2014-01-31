@@ -2,18 +2,13 @@
 
 /**
  * This file is part of the Nette Framework (http://nette.org)
- *
  * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
- *
- * For the full copyright and license information, please view
- * the file license.txt that was distributed with this source code.
  */
 
 namespace Nette\Mail;
 
 use Nette,
 	Nette\Utils\Strings;
-
 
 
 /**
@@ -26,7 +21,6 @@ use Nette,
  * @property   string $returnPath
  * @property   int $priority
  * @property   mixed $htmlBody
- * @property   IMailer $mailer
  */
 class Message extends MimePart
 {
@@ -35,17 +29,11 @@ class Message extends MimePart
 		NORMAL = 3,
 		LOW = 5;
 
-	/** @deprecated */
-	public static $defaultMailer = 'Nette\Mail\SendmailMailer';
-
 	/** @var array */
 	public static $defaultHeaders = array(
 		'MIME-Version' => '1.0',
 		'X-Mailer' => 'Nette Framework',
 	);
-
-	/** @var IMailer */
-	private $mailer;
 
 	/** @var array */
 	private $attachments = array();
@@ -57,7 +45,6 @@ class Message extends MimePart
 	private $html;
 
 
-
 	public function __construct()
 	{
 		foreach (static::$defaultHeaders as $name => $value) {
@@ -67,19 +54,17 @@ class Message extends MimePart
 	}
 
 
-
 	/**
 	 * Sets the sender of the message.
 	 * @param  string  email or format "John Doe" <doe@example.com>
 	 * @param  string
-	 * @return Message  provides a fluent interface
+	 * @return self
 	 */
 	public function setFrom($email, $name = NULL)
 	{
 		$this->setHeader('From', $this->formatEmail($email, $name));
 		return $this;
 	}
-
 
 
 	/**
@@ -92,12 +77,11 @@ class Message extends MimePart
 	}
 
 
-
 	/**
 	 * Adds the reply-to address.
 	 * @param  string  email or format "John Doe" <doe@example.com>
 	 * @param  string
-	 * @return Message  provides a fluent interface
+	 * @return self
 	 */
 	public function addReplyTo($email, $name = NULL)
 	{
@@ -106,18 +90,16 @@ class Message extends MimePart
 	}
 
 
-
 	/**
 	 * Sets the subject of the message.
 	 * @param  string
-	 * @return Message  provides a fluent interface
+	 * @return self
 	 */
 	public function setSubject($subject)
 	{
 		$this->setHeader('Subject', $subject);
 		return $this;
 	}
-
 
 
 	/**
@@ -130,12 +112,11 @@ class Message extends MimePart
 	}
 
 
-
 	/**
 	 * Adds email recipient.
 	 * @param  string  email or format "John Doe" <doe@example.com>
 	 * @param  string
-	 * @return Message  provides a fluent interface
+	 * @return self
 	 */
 	public function addTo($email, $name = NULL) // addRecipient()
 	{
@@ -144,12 +125,11 @@ class Message extends MimePart
 	}
 
 
-
 	/**
 	 * Adds carbon copy email recipient.
 	 * @param  string  email or format "John Doe" <doe@example.com>
 	 * @param  string
-	 * @return Message  provides a fluent interface
+	 * @return self
 	 */
 	public function addCc($email, $name = NULL)
 	{
@@ -158,19 +138,17 @@ class Message extends MimePart
 	}
 
 
-
 	/**
 	 * Adds blind carbon copy email recipient.
 	 * @param  string  email or format "John Doe" <doe@example.com>
 	 * @param  string
-	 * @return Message  provides a fluent interface
+	 * @return self
 	 */
 	public function addBcc($email, $name = NULL)
 	{
 		$this->setHeader('Bcc', $this->formatEmail($email, $name), TRUE);
 		return $this;
 	}
-
 
 
 	/**
@@ -189,11 +167,10 @@ class Message extends MimePart
 	}
 
 
-
 	/**
 	 * Sets the Return-Path header of the message.
 	 * @param  string  email
-	 * @return Message  provides a fluent interface
+	 * @return self
 	 */
 	public function setReturnPath($email)
 	{
@@ -202,29 +179,26 @@ class Message extends MimePart
 	}
 
 
-
 	/**
 	 * Returns the Return-Path header.
 	 * @return string
 	 */
 	public function getReturnPath()
 	{
-		return $this->getHeader('From');
+		return $this->getHeader('Return-Path');
 	}
-
 
 
 	/**
 	 * Sets email priority.
 	 * @param  int
-	 * @return Message  provides a fluent interface
+	 * @return self
 	 */
 	public function setPriority($priority)
 	{
 		$this->setHeader('X-Priority', (int) $priority);
 		return $this;
 	}
-
 
 
 	/**
@@ -237,12 +211,11 @@ class Message extends MimePart
 	}
 
 
-
 	/**
 	 * Sets HTML body.
 	 * @param  string|Nette\Templating\ITemplate
 	 * @param  mixed base-path or FALSE to disable parsing
-	 * @return Message  provides a fluent interface
+	 * @return self
 	 */
 	public function setHtmlBody($html, $basePath = NULL)
 	{
@@ -285,7 +258,6 @@ class Message extends MimePart
 	}
 
 
-
 	/**
 	 * Gets HTML body.
 	 * @return mixed
@@ -294,7 +266,6 @@ class Message extends MimePart
 	{
 		return $this->html;
 	}
-
 
 
 	/**
@@ -311,7 +282,6 @@ class Message extends MimePart
 	}
 
 
-
 	/**
 	 * Adds attachment.
 	 * @param  string
@@ -323,7 +293,6 @@ class Message extends MimePart
 	{
 		return $this->attachments[] = $this->createAttachment($file, $content, $contentType, 'attachment');
 	}
-
 
 
 	/**
@@ -349,44 +318,7 @@ class Message extends MimePart
 	}
 
 
-
 	/********************* building and sending ****************d*g**/
-
-
-
-	/**
-	 * @deprecated
-	 */
-	public function send()
-	{
-		trigger_error(__METHOD__ . '() is deprecated; use IMailer::send() instead.', E_USER_DEPRECATED);
-		$this->getMailer()->send($this);
-	}
-
-
-
-	/**
-	 * @deprecated
-	 */
-	public function setMailer(IMailer $mailer)
-	{
-		$this->mailer = $mailer;
-		return $this;
-	}
-
-
-
-	/**
-	 * @deprecated
-	 */
-	public function getMailer()
-	{
-		if ($this->mailer === NULL) {
-			$this->mailer = is_object(static::$defaultMailer) ? static::$defaultMailer : new static::$defaultMailer;
-		}
-		return $this->mailer;
-	}
-
 
 
 	/**
@@ -397,7 +329,6 @@ class Message extends MimePart
 	{
 		return $this->build()->getEncodedMessage();
 	}
-
 
 
 	/**
@@ -425,7 +356,7 @@ class Message extends MimePart
 			if ($mail->inlines) {
 				$tmp = $alt->setContentType('multipart/related');
 				$alt = $alt->addPart();
-				foreach ($mail->inlines as $name => $value) {
+				foreach ($mail->inlines as $value) {
 					$tmp->addPart($value);
 				}
 			}
@@ -448,7 +379,6 @@ class Message extends MimePart
 	}
 
 
-
 	/**
 	 * Builds text content.
 	 * @return string
@@ -467,12 +397,11 @@ class Message extends MimePart
 	}
 
 
-
 	/** @return string */
 	private function getRandomId()
 	{
-		return '<' . Strings::random() . '@' . (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST']
-			: (isset($_SERVER['SERVER_NAME']) ? $_SERVER['SERVER_NAME'] : 'localhost'))
+		return '<' . Nette\Utils\Random::generate() . '@'
+			. preg_replace('#[^\w.-]+#', '', isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : php_uname('n'))
 			. '>';
 	}
 

@@ -2,19 +2,13 @@
 
 /**
  * This file is part of the Nette Framework (http://nette.org)
- *
  * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
- *
- * For the full copyright and license information, please view
- * the file license.txt that was distributed with this source code.
  */
 
 namespace Nette\Database;
 
 use Nette,
-	PDO,
-	Nette\ObjectMixin;
-
+	PDO;
 
 
 /**
@@ -29,6 +23,9 @@ class ResultSet extends Nette\Object implements \Iterator, IRowContainer
 {
 	/** @var Connection */
 	private $connection;
+
+	/** @var ISupplementalDriver */
+	private $supplementalDriver;
 
 	/** @var \PDOStatement|NULL */
 	private $pdoStatement;
@@ -55,11 +52,11 @@ class ResultSet extends Nette\Object implements \Iterator, IRowContainer
 	private $types;
 
 
-
 	public function __construct(Connection $connection, $queryString, array $params)
 	{
 		$time = microtime(TRUE);
 		$this->connection = $connection;
+		$this->supplementalDriver = $connection->getSupplementalDriver();
 		$this->queryString = $queryString;
 		$this->params = $params;
 
@@ -74,7 +71,6 @@ class ResultSet extends Nette\Object implements \Iterator, IRowContainer
 	}
 
 
-
 	/**
 	 * @return Connection
 	 */
@@ -82,7 +78,6 @@ class ResultSet extends Nette\Object implements \Iterator, IRowContainer
 	{
 		return $this->connection;
 	}
-
 
 
 	/**
@@ -95,7 +90,6 @@ class ResultSet extends Nette\Object implements \Iterator, IRowContainer
 	}
 
 
-
 	/**
 	 * @return string
 	 */
@@ -103,7 +97,6 @@ class ResultSet extends Nette\Object implements \Iterator, IRowContainer
 	{
 		return $this->queryString;
 	}
-
 
 
 	/**
@@ -115,7 +108,6 @@ class ResultSet extends Nette\Object implements \Iterator, IRowContainer
 	}
 
 
-
 	/**
 	 * @return int
 	 */
@@ -123,7 +115,6 @@ class ResultSet extends Nette\Object implements \Iterator, IRowContainer
 	{
 		return $this->pdoStatement ? $this->pdoStatement->columnCount() : NULL;
 	}
-
 
 
 	/**
@@ -135,7 +126,6 @@ class ResultSet extends Nette\Object implements \Iterator, IRowContainer
 	}
 
 
-
 	/**
 	 * @return float
 	 */
@@ -143,7 +133,6 @@ class ResultSet extends Nette\Object implements \Iterator, IRowContainer
 	{
 		return $this->time;
 	}
-
 
 
 	/**
@@ -154,7 +143,7 @@ class ResultSet extends Nette\Object implements \Iterator, IRowContainer
 	public function normalizeRow($row)
 	{
 		if ($this->types === NULL) {
-			$this->types = (array) $this->connection->getSupplementalDriver()->getColumnTypes($this->pdoStatement);
+			$this->types = (array) $this->supplementalDriver->getColumnTypes($this->pdoStatement);
 		}
 
 		foreach ($this->types as $key => $type) {
@@ -177,16 +166,21 @@ class ResultSet extends Nette\Object implements \Iterator, IRowContainer
 			} elseif ($type === IReflection::FIELD_DATETIME || $type === IReflection::FIELD_DATE || $type === IReflection::FIELD_TIME) {
 				$row[$key] = new Nette\DateTime($value);
 
+			} elseif ($type === IReflection::FIELD_TIME_INTERVAL) {
+				preg_match('#^(-?)(\d+)\D(\d+)\D(\d+)\z#', $value, $m);
+				$row[$key] = new \DateInterval("PT$m[2]H$m[3]M$m[4]S");
+				$row[$key]->invert = (int) (bool) $m[1];
+
+			} elseif ($type === IReflection::FIELD_UNIX_TIMESTAMP) {
+				$row[$key] = Nette\DateTime::from($value);
 			}
 		}
 
-		return $this->connection->getSupplementalDriver()->normalizeRow($row);
+		return $this->supplementalDriver->normalizeRow($row);
 	}
 
 
-
 	/********************* misc tools ****************d*g**/
-
 
 
 	/**
@@ -199,9 +193,7 @@ class ResultSet extends Nette\Object implements \Iterator, IRowContainer
 	}
 
 
-
 	/********************* interface Iterator ****************d*g**/
-
 
 
 	public function rewind()
@@ -212,12 +204,10 @@ class ResultSet extends Nette\Object implements \Iterator, IRowContainer
 	}
 
 
-
 	public function current()
 	{
 		return $this->result;
 	}
-
 
 
 	public function key()
@@ -226,12 +216,10 @@ class ResultSet extends Nette\Object implements \Iterator, IRowContainer
 	}
 
 
-
 	public function next()
 	{
 		$this->result = FALSE;
 	}
-
 
 
 	public function valid()
@@ -244,9 +232,7 @@ class ResultSet extends Nette\Object implements \Iterator, IRowContainer
 	}
 
 
-
 	/********************* interface IRowContainer ****************d*g**/
-
 
 
 	/**
@@ -256,6 +242,7 @@ class ResultSet extends Nette\Object implements \Iterator, IRowContainer
 	{
 		$data = $this->pdoStatement ? $this->pdoStatement->fetch() : NULL;
 		if (!$data) {
+			$this->pdoStatement->closeCursor();
 			return FALSE;
 		}
 
@@ -273,7 +260,6 @@ class ResultSet extends Nette\Object implements \Iterator, IRowContainer
 	}
 
 
-
 	/**
 	 * Fetches single field.
 	 * @return mixed|FALSE
@@ -285,19 +271,13 @@ class ResultSet extends Nette\Object implements \Iterator, IRowContainer
 	}
 
 
-
 	/**
 	 * @inheritDoc
 	 */
-	public function fetchPairs($key, $value = NULL)
+	public function fetchPairs($key = NULL, $value = NULL)
 	{
-		$return = array();
-		foreach ($this->fetchAll() as $row) {
-			$return[is_object($row[$key]) ? (string) $row[$key] : $row[$key]] = ($value === NULL ? $row : $row[$value]);
-		}
-		return $return;
+		return Helpers::toPairs($this->fetchAll(), $key, $value);
 	}
-
 
 
 	/**
@@ -308,26 +288,7 @@ class ResultSet extends Nette\Object implements \Iterator, IRowContainer
 		if ($this->results === NULL) {
 			$this->results = iterator_to_array($this);
 		}
-
 		return $this->results;
-	}
-
-
-
-	/** @deprecated */
-	function columnCount()
-	{
-		trigger_error(__METHOD__ . '() is deprecated; use getColumnCount() instead.', E_USER_DEPRECATED);
-		return $this->getColumnCount();
-	}
-
-
-
-	/** @deprecated */
-	function rowCount()
-	{
-		trigger_error(__METHOD__ . '() is deprecated; use getRowCount() instead.', E_USER_DEPRECATED);
-		return $this->getRowCount();
 	}
 
 }

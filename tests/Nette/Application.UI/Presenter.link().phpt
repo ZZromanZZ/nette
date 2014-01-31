@@ -4,16 +4,14 @@
  * Test: Nette\Application\UI\Presenter::link()
  *
  * @author     David Grudl
- * @package    Nette\Application\UI
  */
 
 use Nette\Http,
-	Nette\Application;
-
+	Nette\Application,
+	Tester\Assert;
 
 
 require __DIR__ . '/../bootstrap.php';
-
 
 
 class TestControl extends Application\UI\Control
@@ -44,7 +42,6 @@ class TestControl extends Application\UI\Control
 	}
 
 
-
 	/**
 	 * Save params
 	 * @param  array
@@ -59,7 +56,6 @@ class TestControl extends Application\UI\Control
 	}
 
 }
-
 
 
 class TestPresenter extends Application\UI\Presenter
@@ -101,6 +97,7 @@ class TestPresenter extends Application\UI\Presenter
 		// Other presenter & action link
 		Assert::same( '/index.php?var1=10&action=product&presenter=Other', $this->link('Other:product', array('var1' => $this->var1)) );
 		Assert::same( '/index.php?action=product&presenter=Other', $this->link('Other:product', array('var1' => $this->var1 * 2)) );
+		Assert::same( '/index.php?var1=123&presenter=Nette%3AMicro', $this->link('Nette:Micro:', array('var1' => 123)) );
 
 		// Presenter & signal link
 		Assert::same( '/index.php?action=default&do=buy&presenter=Test', $this->link('buy!', array('var1' => $this->var1)) );
@@ -161,14 +158,14 @@ class OtherPresenter extends TestPresenter
 }
 
 
-$container = id(new Nette\Config\Configurator)->setTempDirectory(TEMP_DIR)->createContainer();
+$container = id(new Nette\Configurator)->setTempDirectory(TEMP_DIR)->createContainer();
 
 $url = new Http\UrlScript('http://localhost/index.php');
 $url->setScriptPath('/index.php');
-unset($container->httpRequest);
-$container->httpRequest = new Http\Request($url);
+$container->removeService('httpRequest');
+$container->addService('httpRequest', new Http\Request($url));
 
-$application = $container->application;
+$application = $container->getService('application');
 $application->router[] = new Application\Routers\SimpleRouter();
 
 $request = new Application\Request('Test', Http\Request::GET, array());

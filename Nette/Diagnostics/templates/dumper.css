@@ -56,10 +56,14 @@ pre.nette-dump div div {
 	color: #850;
 }
 
-.nette-dump-visibility {
+.nette-dump-visibility, .nette-dump-hash {
 	font-size: 85%; color: #999;
 }
 
 .nette-dump-indent {
 	display: none;
+}
+
+span[data-nette-href] {
+	border-bottom: 1px dotted rgba(0, 0, 0, .2);
 }

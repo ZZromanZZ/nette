@@ -2,17 +2,12 @@
 
 /**
  * This file is part of the Nette Framework (http://nette.org)
- *
  * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
- *
- * For the full copyright and license information, please view
- * the file license.txt that was distributed with this source code.
  */
 
 namespace Nette\Forms;
 
 use Nette;
-
 
 
 /**
@@ -24,16 +19,9 @@ interface IControl
 {
 
 	/**
-	 * Loads HTTP data.
-	 * @return void
-	 */
-	function loadHttpData();
-
-	/**
 	 * Sets control's value.
 	 * @param  mixed
 	 * @return void
-	 * @throws InvalidArgumentException
 	 */
 	function setValue($value);
 
@@ -53,12 +41,6 @@ interface IControl
 	 * @return array
 	 */
 	function getErrors();
-
-	/**
-	 * Is control disabled?
-	 * @return bool
-	 */
-	function isDisabled();
 
 	/**
 	 * Is control value excluded from $form->getValues() result?

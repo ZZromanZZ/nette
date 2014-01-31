@@ -2,18 +2,13 @@
 
 /**
  * This file is part of the Nette Framework (http://nette.org)
- *
  * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
- *
- * For the full copyright and license information, please view
- * the file license.txt that was distributed with this source code.
  */
 
 namespace Nette\Mail;
 
 use Nette,
 	Nette\Utils\Strings;
-
 
 
 /**
@@ -48,13 +43,12 @@ class MimePart extends Nette\Object
 	private $body;
 
 
-
 	/**
 	 * Sets a header.
 	 * @param  string
 	 * @param  string|array  value or pair email => name
 	 * @param  bool
-	 * @return MimePart  provides a fluent interface
+	 * @return self
 	 */
 	public function setHeader($name, $value, $append = FALSE)
 	{
@@ -95,7 +89,6 @@ class MimePart extends Nette\Object
 	}
 
 
-
 	/**
 	 * Returns a header.
 	 * @param  string
@@ -107,18 +100,16 @@ class MimePart extends Nette\Object
 	}
 
 
-
 	/**
 	 * Removes a header.
 	 * @param  string
-	 * @return MimePart  provides a fluent interface
+	 * @return self
 	 */
 	public function clearHeader($name)
 	{
 		unset($this->headers[$name]);
 		return $this;
 	}
-
 
 
 	/**
@@ -161,7 +152,6 @@ class MimePart extends Nette\Object
 	}
 
 
-
 	/**
 	 * Returns all headers.
 	 * @return array
@@ -172,12 +162,11 @@ class MimePart extends Nette\Object
 	}
 
 
-
 	/**
 	 * Sets Content-Type header.
 	 * @param  string
 	 * @param  string
-	 * @return MimePart  provides a fluent interface
+	 * @return self
 	 */
 	public function setContentType($contentType, $charset = NULL)
 	{
@@ -186,18 +175,16 @@ class MimePart extends Nette\Object
 	}
 
 
-
 	/**
 	 * Sets Content-Transfer-Encoding header.
 	 * @param  string
-	 * @return MimePart  provides a fluent interface
+	 * @return self
 	 */
 	public function setEncoding($encoding)
 	{
 		$this->setHeader('Content-Transfer-Encoding', $encoding);
 		return $this;
 	}
-
 
 
 	/**
@@ -210,7 +197,6 @@ class MimePart extends Nette\Object
 	}
 
 
-
 	/**
 	 * Adds or creates new multipart.
 	 * @return MimePart
@@ -221,10 +207,9 @@ class MimePart extends Nette\Object
 	}
 
 
-
 	/**
 	 * Sets textual body.
-	 * @return MimePart  provides a fluent interface
+	 * @return self
 	 */
 	public function setBody($body)
 	{
@@ -237,7 +222,6 @@ class MimePart extends Nette\Object
 	}
 
 
-
 	/**
 	 * Gets textual body.
 	 * @return mixed
@@ -248,9 +232,7 @@ class MimePart extends Nette\Object
 	}
 
 
-
 	/********************* building ****************d*g**/
-
 
 
 	/**
@@ -260,7 +242,7 @@ class MimePart extends Nette\Object
 	public function getEncodedMessage()
 	{
 		$output = '';
-		$boundary = '--------' . Strings::random();
+		$boundary = '--------' . Nette\Utils\Random::generate();
 
 		foreach ($this->headers as $name => $value) {
 			$output .= $name . ': ' . $this->getEncodedHeader($name);
@@ -274,26 +256,26 @@ class MimePart extends Nette\Object
 		$body = (string) $this->body;
 		if ($body !== '') {
 			switch ($this->getEncoding()) {
-			case self::ENCODING_QUOTED_PRINTABLE:
-				$output .= function_exists('quoted_printable_encode') ? quoted_printable_encode($body) : self::encodeQuotedPrintable($body);
-				break;
+				case self::ENCODING_QUOTED_PRINTABLE:
+					$output .= function_exists('quoted_printable_encode') ? quoted_printable_encode($body) : self::encodeQuotedPrintable($body);
+					break;
 
-			case self::ENCODING_BASE64:
-				$output .= rtrim(chunk_split(base64_encode($body), self::LINE_LENGTH, self::EOL));
-				break;
+				case self::ENCODING_BASE64:
+					$output .= rtrim(chunk_split(base64_encode($body), self::LINE_LENGTH, self::EOL));
+					break;
 
-			case self::ENCODING_7BIT:
-				$body = preg_replace('#[\x80-\xFF]+#', '', $body);
-				// break intentionally omitted
+				case self::ENCODING_7BIT:
+					$body = preg_replace('#[\x80-\xFF]+#', '', $body);
+					// break intentionally omitted
 
-			case self::ENCODING_8BIT:
-				$body = str_replace(array("\x00", "\r"), '', $body);
-				$body = str_replace("\n", self::EOL, $body);
-				$output .= $body;
-				break;
+				case self::ENCODING_8BIT:
+					$body = str_replace(array("\x00", "\r"), '', $body);
+					$body = str_replace("\n", self::EOL, $body);
+					$output .= $body;
+					break;
 
-			default:
-				throw new Nette\InvalidStateException('Unknown encoding.');
+				default:
+					throw new Nette\InvalidStateException('Unknown encoding.');
 			}
 		}
 
@@ -311,9 +293,7 @@ class MimePart extends Nette\Object
 	}
 
 
-
 	/********************* QuotedPrintable helpers ****************d*g**/
-
 
 
 	/**
@@ -347,45 +327,5 @@ class MimePart extends Nette\Object
 		$offset = strlen($o) - strrpos($o, "\n");
 		return $o;
 	}
-
-
-
-	/**
-	 * Converts a 8 bit string to a quoted-printable string.
-	 * @param  string
-	 * @return string
-	 *//*5.2*
-	public static function encodeQuotedPrintable($s)
-	{
-		$range = '!"#$%&\'()*+,-./0123456789:;<>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}'; // \x21-\x7E without \x3D
-		$pos = 0;
-		$len = 0;
-		$o = '';
-		$size = strlen($s);
-		while ($pos < $size) {
-			if ($l = strspn($s, $range, $pos)) {
-				while ($len + $l > self::LINE_LENGTH - 1) { // 1 = length of suffix =
-					$lx = self::LINE_LENGTH - $len - 1;
-					$o .= substr($s, $pos, $lx) . '=' . self::EOL;
-					$pos += $lx;
-					$l -= $lx;
-					$len = 0;
-				}
-				$o .= substr($s, $pos, $l);
-				$len += $l;
-				$pos += $l;
-
-			} else {
-				$len += 3;
-				if ($len > self::LINE_LENGTH - 1) {
-					$o .= '=' . self::EOL;
-					$len = 3;
-				}
-				$o .= '=' . strtoupper(bin2hex($s[$pos]));
-				$pos++;
-			}
-		}
-		return rtrim($o, '=' . self::EOL);
-	}*/
 
 }

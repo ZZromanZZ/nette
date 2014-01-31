@@ -4,21 +4,20 @@
  * Test: Nette\Database\ResultSet::normalizeRow()
  *
  * @author     David Grudl
- * @package    Nette\Database
  * @dataProvider? databases.ini  postgresql
  */
 
-$query = 'postgresql';
+use Tester\Assert;
+
 require __DIR__ . '/connect.inc.php'; // create $connection
 
 Nette\Database\Helpers::loadFromFile($connection, __DIR__ . '/files/pgsql-nette_test3.sql');
 
 
-
-$res = $connection->query('SELECT * FROM types');
+$res = $context->query('SELECT * FROM types');
 
 $row = $res->fetch();
-Assert::true( is_string($row->money) );
+Assert::type( 'string', $row->money );
 unset($row->money);
 
 Assert::equal( array(
@@ -54,7 +53,7 @@ Assert::equal( array(
 	'polygon' => '((10,20),(30,40))',
 ), (array) $row );
 
-Assert::equal( array(
+Assert::same( array(
 	'smallint' => 0,
 	'integer' => 0,
 	'bigint' => 0,
@@ -88,7 +87,7 @@ Assert::equal( array(
 	'polygon' => '((10,20),(30,40))',
 ), (array) $res->fetch() );
 
-Assert::equal( array(
+Assert::same( array(
 	'smallint' => NULL,
 	'integer' => NULL,
 	'bigint' => NULL,
@@ -123,8 +122,8 @@ Assert::equal( array(
 ), (array) $res->fetch() );
 
 
-$res = $connection->query('SELECT "integer" AS a, "text" AS a FROM types');
+$res = $context->query('SELECT "integer" AS a, "text" AS a FROM types');
 
-Assert::equal( array(
+Assert::same( array(
 	'a' => 'a',
 ), (array) @$res->fetch() );

@@ -5,15 +5,13 @@
  *
  * @author     David Grudl
  * @author     Michael Moravec
- * @package    Nette\Diagnostics
  */
 
-use Nette\Diagnostics\Debugger;
-
+use Nette\Diagnostics\Debugger,
+	Tester\Assert;
 
 
 require __DIR__ . '/../bootstrap.php';
-
 
 
 // Setup environment
@@ -35,12 +33,17 @@ class TestLogger
 }
 
 
-Debugger::$logger = new TestLogger('Exception: First in %a%:%d%');
-$e = new Exception('First');
-Debugger::log($e);
+test(function() {
+	Debugger::setLogger(new TestLogger('Exception: First in %a%:%d%'));
+	$e = new Exception('First');
+	Debugger::log($e);
+});
 
 
-Debugger::$logger = new TestLogger("RuntimeException: Third in %a%:%d%\ncaused by InvalidArgumentException: Second in %a%:%d%\ncaused by Exception: First in %a%:%d%");
-$e = new InvalidArgumentException('Second', 0, $e);
-$e = new RuntimeException('Third', 0, $e);
-Debugger::log($e);
+test(function() {
+	Debugger::setLogger(new TestLogger("RuntimeException: Third in %a%:%d%\ncaused by InvalidArgumentException: Second in %a%:%d%\ncaused by Exception: First in %a%:%d%"));
+	$e = new Exception('First');
+	$e = new InvalidArgumentException('Second', 0, $e);
+	$e = new RuntimeException('Third', 0, $e);
+	Debugger::log($e);
+});

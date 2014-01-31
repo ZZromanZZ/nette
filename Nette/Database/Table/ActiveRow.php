@@ -2,18 +2,13 @@
 
 /**
  * This file is part of the Nette Framework (http://nette.org)
- *
  * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
- *
- * For the full copyright and license information, please view
- * the file license.txt that was distributed with this source code.
  */
 
 namespace Nette\Database\Table;
 
 use Nette,
 	Nette\Database\Reflection\MissingReferenceException;
-
 
 
 /**
@@ -34,9 +29,8 @@ class ActiveRow implements \IteratorAggregate, IRow
 	/** @var bool */
 	private $dataRefreshed = FALSE;
 
-	/** @var array of new values {@see ActiveRow::update()} */
-	private $modified = array();
-
+	/** @var bool */
+	private $isModified = FALSE;
 
 
 	public function __construct(array $data, Selection $table)
@@ -44,7 +38,6 @@ class ActiveRow implements \IteratorAggregate, IRow
 		$this->data = $data;
 		$this->table = $table;
 	}
-
 
 
 	/**
@@ -57,7 +50,6 @@ class ActiveRow implements \IteratorAggregate, IRow
 	}
 
 
-
 	/**
 	 * @internal
 	 */
@@ -65,7 +57,6 @@ class ActiveRow implements \IteratorAggregate, IRow
 	{
 		return $this->table;
 	}
-
 
 
 	public function __toString()
@@ -78,7 +69,6 @@ class ActiveRow implements \IteratorAggregate, IRow
 	}
 
 
-
 	/**
 	 * @return array
 	 */
@@ -89,16 +79,18 @@ class ActiveRow implements \IteratorAggregate, IRow
 	}
 
 
-
 	/**
 	 * Returns primary key value.
 	 * @param  bool
-	 * @return mixed
+	 * @return mixed possible int, string, array, object (Nette\DateTime)
 	 */
 	public function getPrimary($need = TRUE)
 	{
-		$primary = $this->table->getPrimary();
-		if (!is_array($primary)) {
+		$primary = $this->table->getPrimary($need);
+		if ($primary === NULL) {
+			return NULL;
+
+		} elseif (!is_array($primary)) {
 			if (isset($this->data[$primary])) {
 				return $this->data[$primary];
 			} elseif ($need) {
@@ -106,6 +98,7 @@ class ActiveRow implements \IteratorAggregate, IRow
 			} else {
 				return NULL;
 			}
+
 		} else {
 			$primaryVal = array();
 			foreach ($primary as $key) {
@@ -123,7 +116,6 @@ class ActiveRow implements \IteratorAggregate, IRow
 	}
 
 
-
 	/**
 	 * Returns row signature (composition of primary keys)
 	 * @param  bool
@@ -135,12 +127,11 @@ class ActiveRow implements \IteratorAggregate, IRow
 	}
 
 
-
 	/**
 	 * Returns referenced row.
 	 * @param  string
 	 * @param  string
-	 * @return ActiveRow or NULL if the row does not exist
+	 * @return IRow or NULL if the row does not exist
 	 */
 	public function ref($key, $throughColumn = NULL)
 	{
@@ -150,7 +141,6 @@ class ActiveRow implements \IteratorAggregate, IRow
 
 		return $this->getReference($key, $throughColumn);
 	}
-
 
 
 	/**
@@ -171,38 +161,37 @@ class ActiveRow implements \IteratorAggregate, IRow
 	}
 
 
-
 	/**
 	 * Updates row.
 	 * @param  array|\Traversable (column => value)
-	 * @return int number of affected rows or FALSE in case of an error
+	 * @return bool
 	 */
 	public function update($data)
 	{
-		if ($data instanceof \Traversable) {
-			$data = iterator_to_array($data);
-		}
-		if ($data === NULL) {
-			$data = $this->modified;
-		}
-		$this->data = $data + $this->data;
-		$this->modified = $data + $this->modified;
-		return $this->table->getConnection()
-			->table($this->table->getName())
-			->wherePrimary($this->getPrimary())
-			->update($data);
-	}
+		$selection = $this->table->createSelectionInstance()
+			->wherePrimary($this->getPrimary());
 
+		if ($selection->update($data)) {
+			$this->isModified = TRUE;
+			$selection->select('*');
+			if (($row = $selection->fetch()) === FALSE) {
+				throw new Nette\InvalidStateException('Database refetch failed; row does not exist!');
+			}
+			$this->data = $row->data;
+			return TRUE;
+		} else {
+			return FALSE;
+		}
+	}
 
 
 	/**
 	 * Deletes row.
-	 * @return int number of affected rows or FALSE in case of an error
+	 * @return int number of affected rows
 	 */
 	public function delete()
 	{
-		$res = $this->table->getConnection()
-			->table($this->table->getName())
+		$res = $this->table->createSelectionInstance()
 			->wherePrimary($this->getPrimary())
 			->delete();
 
@@ -214,9 +203,7 @@ class ActiveRow implements \IteratorAggregate, IRow
 	}
 
 
-
 	/********************* interface IteratorAggregate ****************d*g**/
-
 
 
 	public function getIterator()
@@ -226,9 +213,7 @@ class ActiveRow implements \IteratorAggregate, IRow
 	}
 
 
-
 	/********************* interface ArrayAccess & magic accessors ****************d*g**/
-
 
 
 	/**
@@ -243,7 +228,6 @@ class ActiveRow implements \IteratorAggregate, IRow
 	}
 
 
-
 	/**
 	 * Returns value of column.
 	 * @param  string column name
@@ -253,7 +237,6 @@ class ActiveRow implements \IteratorAggregate, IRow
 	{
 		return $this->__get($key);
 	}
-
 
 
 	/**
@@ -267,7 +250,6 @@ class ActiveRow implements \IteratorAggregate, IRow
 	}
 
 
-
 	/**
 	 * Removes column from data.
 	 * @param  string column name
@@ -279,14 +261,10 @@ class ActiveRow implements \IteratorAggregate, IRow
 	}
 
 
-
 	public function __set($key, $value)
 	{
-		trigger_error('Changing properties of ActiveRow is deprecated; use update() instead.', E_USER_DEPRECATED);
-		$this->data[$key] = $value;
-		$this->modified[$key] = $value;
+		throw new Nette\DeprecatedException('ActiveRow is read-only; use update() method instead.');
 	}
-
 
 
 	public function &__get($key)
@@ -310,7 +288,6 @@ class ActiveRow implements \IteratorAggregate, IRow
 	}
 
 
-
 	public function __isset($key)
 	{
 		$this->accessColumn($key);
@@ -322,22 +299,14 @@ class ActiveRow implements \IteratorAggregate, IRow
 	}
 
 
-
 	public function __unset($key)
 	{
-		trigger_error('Unsetting properties of ActiveRow is deprecated.', E_USER_DEPRECATED);
-		unset($this->data[$key]);
-		unset($this->modified[$key]);
+		throw new Nette\DeprecatedException('ActiveRow is read-only.');
 	}
-
 
 
 	protected function accessColumn($key, $selectColumn = TRUE)
 	{
-		if (isset($this->modified[$key])) {
-			return;
-		}
-
 		$this->table->accessColumn($key, $selectColumn);
 		if ($this->table->getDataRefreshed() && !$this->dataRefreshed) {
 			$this->data = $this->table[$this->getSignature()]->data;
@@ -346,12 +315,10 @@ class ActiveRow implements \IteratorAggregate, IRow
 	}
 
 
-
 	protected function removeAccessColumn($key)
 	{
 		$this->table->removeAccessColumn($key);
 	}
-
 
 
 	protected function getReference($table, $column)
@@ -359,16 +326,8 @@ class ActiveRow implements \IteratorAggregate, IRow
 		$this->accessColumn($column);
 		if (array_key_exists($column, $this->data)) {
 			$value = $this->data[$column];
-			$value = $value instanceof ActiveRow ? $value->getPrimary() : $value;
-
-			$referenced = $this->table->getReferencedTable($table, $column, !empty($this->modified[$column]));
-			$referenced = isset($referenced[$value]) ? $referenced[$value] : NULL; // referenced row may not exist
-
-			if (!empty($this->modified[$column])) { // cause saving changed column and prevent regenerating referenced table for $column
-				$this->modified[$column] = 0; // 0 fails on empty, pass on isset
-			}
-
-			return $referenced;
+			$referenced = $this->table->getReferencedTable($table, $column, $value);
+			return isset($referenced[$value]) ? $referenced[$value] : NULL; // referenced row may not exist
 		}
 
 		return FALSE;

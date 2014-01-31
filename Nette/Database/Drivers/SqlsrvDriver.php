@@ -2,17 +2,12 @@
 
 /**
  * This file is part of the Nette Framework (http://nette.org)
- *
  * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
- *
- * For the full copyright and license information, please view
- * the file license.txt that was distributed with this source code.
  */
 
 namespace Nette\Database\Drivers;
 
 use Nette;
-
 
 
 /**
@@ -27,16 +22,13 @@ class SqlsrvDriver extends Nette\Object implements Nette\Database\ISupplementalD
 	private $connection;
 
 
-
 	public function __construct(Nette\Database\Connection $connection, array $options)
 	{
 		$this->connection = $connection;
 	}
 
 
-
 	/********************* SQL ****************d*g**/
-
 
 
 	/**
@@ -49,7 +41,6 @@ class SqlsrvDriver extends Nette\Object implements Nette\Database\ISupplementalD
 	}
 
 
-
 	/**
 	 * Formats boolean for use in a SQL statement.
 	 */
@@ -59,16 +50,14 @@ class SqlsrvDriver extends Nette\Object implements Nette\Database\ISupplementalD
 	}
 
 
-
 	/**
 	 * Formats date-time for use in a SQL statement.
 	 */
-	public function formatDateTime(\DateTime $value)
+	public function formatDateTime(/*\DateTimeInterface*/ $value)
 	{
 		/** @see http://msdn.microsoft.com/en-us/library/ms187819.aspx */
 		return $value->format("'Y-m-d H:i:s'");
 	}
-
 
 
 	/**
@@ -82,21 +71,22 @@ class SqlsrvDriver extends Nette\Object implements Nette\Database\ISupplementalD
 	}
 
 
-
 	/**
 	 * Injects LIMIT/OFFSET to the SQL query.
 	 */
-	public function applyLimit(&$sql, $limit, $offset)
+	public function applyLimit(& $sql, $limit, $offset)
 	{
 		if ($limit >= 0) {
-			$sql = 'SELECT TOP ' . (int) $limit . ' * FROM (' . $sql . ') t';
+			$sql = preg_replace('#^\s*(SELECT|UPDATE|DELETE)#i', '$0 TOP ' . (int) $limit, $sql, 1, $count);
+			if (!$count) {
+				throw new Nette\InvalidArgumentException('SQL query must begin with SELECT, UPDATE or DELETE command.');
+			}
 		}
 
-		if ($offset) {
-			throw new Nette\NotImplementedException('Offset is not implemented.');
+		if ($offset > 0) {
+			throw new Nette\NotSupportedException('Offset is not supported by this database.');
 		}
 	}
-
 
 
 	/**
@@ -108,9 +98,7 @@ class SqlsrvDriver extends Nette\Object implements Nette\Database\ISupplementalD
 	}
 
 
-
 	/********************* reflection ****************d*g**/
-
 
 
 	/**
@@ -139,7 +127,6 @@ class SqlsrvDriver extends Nette\Object implements Nette\Database\ISupplementalD
 
 		return $tables;
 	}
-
 
 
 	/**
@@ -186,7 +173,6 @@ class SqlsrvDriver extends Nette\Object implements Nette\Database\ISupplementalD
 	}
 
 
-
 	/**
 	 * Returns metadata for all indexes in a table.
 	 */
@@ -223,7 +209,6 @@ class SqlsrvDriver extends Nette\Object implements Nette\Database\ISupplementalD
 	}
 
 
-
 	/**
 	 * Returns metadata for all foreign keys in a table.
 	 */
@@ -254,7 +239,6 @@ class SqlsrvDriver extends Nette\Object implements Nette\Database\ISupplementalD
 	}
 
 
-
 	/**
 	 * Returns associative array of detected types (IReflection::FIELD_*) in result set.
 	 */
@@ -274,13 +258,12 @@ class SqlsrvDriver extends Nette\Object implements Nette\Database\ISupplementalD
 	}
 
 
-
 	/**
 	 * @return bool
 	 */
 	public function isSupported($item)
 	{
-		return $item === self::SUPPORT_COLUMNS_META;
+		return $item === self::SUPPORT_SUBSELECT;
 	}
 
 }

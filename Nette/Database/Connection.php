@@ -2,19 +2,13 @@
 
 /**
  * This file is part of the Nette Framework (http://nette.org)
- *
  * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
- *
- * For the full copyright and license information, please view
- * the file license.txt that was distributed with this source code.
  */
 
 namespace Nette\Database;
 
 use Nette,
-	Nette\ObjectMixin,
 	PDO;
-
 
 
 /**
@@ -28,6 +22,12 @@ use Nette,
  */
 class Connection extends Nette\Object
 {
+	/** @var array of function(Connection $connection); Occurs after connection is established */
+	public $onConnect;
+
+	/** @var array of function(Connection $connection, ResultSet|Exception $result); Occurs after query is executed */
+	public $onQuery;
+
 	/** @var array */
 	private $params;
 
@@ -40,20 +40,13 @@ class Connection extends Nette\Object
 	/** @var SqlPreprocessor */
 	private $preprocessor;
 
-	/** @var Table\SelectionFactory */
-	private $selectionFactory;
-
 	/** @var PDO */
 	private $pdo;
-
-	/** @var array of function(Connection $connection, ResultSet|Exception $result); Occurs after query is executed */
-	public $onQuery;
-
 
 
 	public function __construct($dsn, $user = NULL, $password = NULL, array $options = NULL)
 	{
-		if (func_num_args() > 4) { // compatiblity
+		if (func_num_args() > 4) { // compatibility
 			$options['driverClass'] = func_get_arg(4);
 		}
 		$this->params = array($dsn, $user, $password);
@@ -65,8 +58,7 @@ class Connection extends Nette\Object
 	}
 
 
-
-	private function connect()
+	public function connect()
 	{
 		if ($this->pdo) {
 			return;
@@ -79,8 +71,8 @@ class Connection extends Nette\Object
 			: $this->options['driverClass'];
 		$this->driver = new $class($this, $this->options);
 		$this->preprocessor = new SqlPreprocessor($this);
+		$this->onConnect($this);
 	}
-
 
 
 	/** @return string */
@@ -88,7 +80,6 @@ class Connection extends Nette\Object
 	{
 		return $this->params[0];
 	}
-
 
 
 	/** @return PDO */
@@ -99,38 +90,12 @@ class Connection extends Nette\Object
 	}
 
 
-
 	/** @return ISupplementalDriver */
 	public function getSupplementalDriver()
 	{
 		$this->connect();
 		return $this->driver;
 	}
-
-
-
-	/** @return void */
-	public function beginTransaction()
-	{
-		$this->queryArgs('::beginTransaction', array());
-	}
-
-
-
-	/** @return void */
-	public function commit()
-	{
-		$this->queryArgs('::commit', array());
-	}
-
-
-
-	/** @return void */
-	public function rollBack()
-	{
-		$this->queryArgs('::rollBack', array());
-	}
-
 
 
 	/**
@@ -141,7 +106,6 @@ class Connection extends Nette\Object
 	{
 		return $this->getPdo()->lastInsertId($name);
 	}
-
 
 
 	/**
@@ -155,13 +119,28 @@ class Connection extends Nette\Object
 	}
 
 
+	/** @deprecated */
+	function beginTransaction()
+	{
+		$this->queryArgs('::beginTransaction', array());
+	}
 
-	/**
-	 * Generates and executes SQL query.
-	 * @param  string  statement
-	 * @param  mixed   [parameters, ...]
-	 * @return ResultSet
-	 */
+
+	/** @deprecated */
+	function commit()
+	{
+		$this->queryArgs('::commit', array());
+	}
+
+
+	/** @deprecated */
+	public function rollBack()
+	{
+		$this->queryArgs('::rollBack', array());
+	}
+
+
+	/** @deprecated */
 	public function query($statement)
 	{
 		$args = func_get_args();
@@ -169,13 +148,8 @@ class Connection extends Nette\Object
 	}
 
 
-
-	/**
-	 * @param  string  statement
-	 * @param  array
-	 * @return ResultSet
-	 */
-	public function queryArgs($statement, array $params)
+	/** @deprecated */
+	function queryArgs($statement, array $params)
 	{
 		$this->connect();
 		if ($params) {
@@ -195,128 +169,46 @@ class Connection extends Nette\Object
 	}
 
 
-
 	/********************* shortcuts ****************d*g**/
 
 
-
-	/**
-	 * Shortcut for query()->fetch()
-	 * @param  string  statement
-	 * @param  mixed   [parameters, ...]
-	 * @return Row
-	 */
-	public function fetch($args)
+	/** @deprecated */
+	function fetch($args)
 	{
 		$args = func_get_args();
 		return $this->queryArgs(array_shift($args), $args)->fetch();
 	}
 
 
-
-	/**
-	 * Shortcut for query()->fetchField()
-	 * @param  string  statement
-	 * @param  mixed   [parameters, ...]
-	 * @return mixed
-	 */
-	public function fetchField($args)
+	/** @deprecated */
+	function fetchField($args)
 	{
 		$args = func_get_args();
 		return $this->queryArgs(array_shift($args), $args)->fetchField();
 	}
 
 
-
-	/**
-	 * Shortcut for query()->fetchPairs()
-	 * @param  string  statement
-	 * @param  mixed   [parameters, ...]
-	 * @return array
-	 */
-	public function fetchPairs($args)
+	/** @deprecated */
+	function fetchPairs($args)
 	{
 		$args = func_get_args();
-		return $this->queryArgs(array_shift($args), $args)->fetchPairs(0, 1);
+		return $this->queryArgs(array_shift($args), $args)->fetchPairs();
 	}
 
 
-
-	/**
-	 * Shortcut for query()->fetchAll()
-	 * @param  string  statement
-	 * @param  mixed   [parameters, ...]
-	 * @return array
-	 */
-	public function fetchAll($args)
+	/** @deprecated */
+	function fetchAll($args)
 	{
 		$args = func_get_args();
 		return $this->queryArgs(array_shift($args), $args)->fetchAll();
 	}
 
 
-
-	/********************* Selection ****************d*g**/
-
-
-
-	/**
-	 * Creates selector for table.
-	 * @param  string
-	 * @return Nette\Database\Table\Selection
-	 */
-	public function table($table)
-	{
-		if (!$this->selectionFactory) {
-			$this->selectionFactory = new Table\SelectionFactory($this);
-		}
-		return $this->selectionFactory->create($table);
-	}
-
-
-
-	/**
-	 * @return Connection   provides a fluent interface
-	 */
-	public function setSelectionFactory(Table\SelectionFactory $selectionFactory)
-	{
-		$this->selectionFactory = $selectionFactory;
-		return $this;
-	}
-
-
-
 	/** @deprecated */
-	function setDatabaseReflection()
+	static function literal($value)
 	{
-		trigger_error(__METHOD__ . '() is deprecated; use setSelectionFactory() instead.', E_USER_DEPRECATED);
-		return $this;
-	}
-
-
-
-	/** @deprecated */
-	function setCacheStorage()
-	{
-		trigger_error(__METHOD__ . '() is deprecated; use setSelectionFactory() instead.', E_USER_DEPRECATED);
-	}
-
-
-
-	/** @deprecated */
-	function lastInsertId($name = NULL)
-	{
-		trigger_error(__METHOD__ . '() is deprecated; use getInsertId() instead.', E_USER_DEPRECATED);
-		return $this->getInsertId($name);
-	}
-
-
-	/** @deprecated */
-	function exec($statement)
-	{
-		trigger_error(__METHOD__ . '() is deprecated; use query()->getRowCount() instead.', E_USER_DEPRECATED);
 		$args = func_get_args();
-		return $this->queryArgs(array_shift($args), $args)->getRowCount();
+		return new SqlLiteral(array_shift($args), $args);
 	}
 
 }

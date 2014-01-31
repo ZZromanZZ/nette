@@ -2,17 +2,12 @@
 
 /**
  * This file is part of the Nette Framework (http://nette.org)
- *
  * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
- *
- * For the full copyright and license information, please view
- * the file license.txt that was distributed with this source code.
  */
 
 namespace Nette\PhpGenerator;
 
 use Nette;
-
 
 
 /**
@@ -35,11 +30,10 @@ class Helpers
 	}
 
 
-
-	private static function _dump(&$var, $level = 0)
+	private static function _dump(& $var, $level = 0)
 	{
 		if ($var instanceof PhpLiteral) {
-			return $var->value;
+			return (string) $var;
 
 		} elseif (is_float($var)) {
 			$var = var_export($var, TRUE);
@@ -77,19 +71,21 @@ class Helpers
 				throw new Nette\InvalidArgumentException('Nesting level too deep or recursive dependency.');
 
 			} else {
-				$out = "\n";
+				$out = '';
+				$outAlt = "\n$space";
 				$var[$marker] = TRUE;
 				$counter = 0;
-				foreach ($var as $k => &$v) {
+				foreach ($var as $k => & $v) {
 					if ($k !== $marker) {
-						$out .= "$space\t" . ($k === $counter ? '' : self::_dump($k, $level + 1) . " => ") . self::_dump($v, $level + 1) . ",\n";
+						$item = ($k === $counter ? '' : self::_dump($k, $level + 1) . ' => ') . self::_dump($v, $level + 1);
 						$counter = is_int($k) ? max($k + 1, $counter) : $counter;
+						$out .= ($out === '' ? '' : ', ') . $item;
+						$outAlt .= "\t$item,\n$space";
 					}
 				}
 				unset($var[$marker]);
-				$out .= $space;
 			}
-			return "array($out)";
+			return 'array(' . (strpos($out, "\n") === FALSE && strlen($out) < 40 ? $out : $outAlt) . ')';
 
 		} elseif (is_object($var)) {
 			$arr = (array) $var;
@@ -105,7 +101,7 @@ class Helpers
 			} else {
 				$out = "\n";
 				$list[] = $var;
-				foreach ($arr as $k => &$v) {
+				foreach ($arr as $k => & $v) {
 					if ($k[0] === "\x00") {
 						$k = substr($k, strrpos($k, "\x00") + 1);
 					}
@@ -127,7 +123,6 @@ class Helpers
 	}
 
 
-
 	/**
 	 * Generates PHP statement.
 	 * @return string
@@ -137,7 +132,6 @@ class Helpers
 		$args = func_get_args();
 		return self::formatArgs(array_shift($args), $args);
 	}
-
 
 
 	/**
@@ -170,7 +164,6 @@ class Helpers
 	}
 
 
-
 	/**
 	 * Returns a PHP representation of a object member.
 	 * @return string
@@ -183,7 +176,6 @@ class Helpers
 	}
 
 
-
 	/**
 	 * @return bool
 	 */
@@ -191,7 +183,6 @@ class Helpers
 	{
 		return is_string($value) && preg_match('#^' . self::PHP_IDENT . '\z#', $value);
 	}
-
 
 
 	public static function createObject($class, array $props)

@@ -2,18 +2,13 @@
 
 /**
  * This file is part of the Nette Framework (http://nette.org)
- *
  * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
- *
- * For the full copyright and license information, please view
- * the file license.txt that was distributed with this source code.
  */
 
 namespace Nette\Application\UI;
 
 use Nette,
 	Nette\Application\BadRequestException;
-
 
 
 /**
@@ -34,7 +29,6 @@ class PresenterComponentReflection extends Nette\Reflection\ClassType
 	private static $mcCache = array();
 
 
-
 	/**
 	 * @param  string|NULL
 	 * @return array of persistent parameters.
@@ -49,7 +43,7 @@ class PresenterComponentReflection extends Nette\Reflection\ClassType
 		$params = array();
 		if (is_subclass_of($class, 'Nette\Application\UI\PresenterComponent')) {
 			$defaults = get_class_vars($class);
-			foreach ($class::getPersistentParams(/*5.2*$class*/) as $name => $default) {
+			foreach ($class::getPersistentParams() as $name => $default) {
 				if (is_int($name)) {
 					$name = $default;
 					$default = $defaults[$name];
@@ -72,7 +66,6 @@ class PresenterComponentReflection extends Nette\Reflection\ClassType
 	}
 
 
-
 	/**
 	 * @param  string|NULL
 	 * @return array of persistent components.
@@ -86,7 +79,7 @@ class PresenterComponentReflection extends Nette\Reflection\ClassType
 		}
 		$components = array();
 		if (is_subclass_of($class, 'Nette\Application\UI\Presenter')) {
-			foreach ($class::getPersistentComponents(/*5.2*$class*/) as $name => $meta) {
+			foreach ($class::getPersistentComponents() as $name => $meta) {
 				if (is_string($meta)) {
 					$name = $meta;
 				}
@@ -96,7 +89,6 @@ class PresenterComponentReflection extends Nette\Reflection\ClassType
 		}
 		return $components;
 	}
-
 
 
 	/**
@@ -117,7 +109,6 @@ class PresenterComponentReflection extends Nette\Reflection\ClassType
 		}
 		return $cache;
 	}
-
 
 
 	/**
@@ -142,7 +133,6 @@ class PresenterComponentReflection extends Nette\Reflection\ClassType
 		}
 		return $res;
 	}
-
 
 
 	/**

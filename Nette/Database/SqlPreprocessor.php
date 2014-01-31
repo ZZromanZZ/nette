@@ -2,17 +2,12 @@
 
 /**
  * This file is part of the Nette Framework (http://nette.org)
- *
  * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
- *
- * For the full copyright and license information, please view
- * the file license.txt that was distributed with this source code.
  */
 
 namespace Nette\Database;
 
 use Nette;
-
 
 
 /**
@@ -37,17 +32,27 @@ class SqlPreprocessor extends Nette\Object
 	/** @var int */
 	private $counter;
 
-	/** @var string values|assoc|multi */
+	/** @var string values|assoc|multi|select|union */
 	private $arrayMode;
 
+	/** @var array */
+	private $arrayModes;
 
 
 	public function __construct(Connection $connection)
 	{
 		$this->connection = $connection;
 		$this->driver = $connection->getSupplementalDriver();
+		$this->arrayModes = array(
+			'INSERT' => $this->driver->isSupported(ISupplementalDriver::SUPPORT_MULTI_INSERT_AS_SELECT) ? 'select' : 'values',
+			'REPLACE' => 'values',
+			'UPDATE' => 'assoc',
+			'WHERE' => 'and',
+			'HAVING' => 'and',
+			'ORDER BY' => 'order',
+			'GROUP BY' => 'order',
+		);
 	}
-
 
 
 	/**
@@ -70,7 +75,7 @@ class SqlPreprocessor extends Nette\Object
 			} else {
 				$res[] = Nette\Utils\Strings::replace(
 					$param,
-					'~\'.*?\'|".*?"|\?|\b(?:INSERT|REPLACE|UPDATE|WHERE|HAVING|ORDER BY|GROUP BY)\b~si',
+					'~\'.*?\'|".*?"|\?|\b(?:INSERT|REPLACE|UPDATE|WHERE|HAVING|ORDER BY|GROUP BY)\b|/\*.*?\*/|--[^\n]*~si',
 					array($this, 'callback')
 				);
 			}
@@ -80,12 +85,11 @@ class SqlPreprocessor extends Nette\Object
 	}
 
 
-
 	/** @internal */
 	public function callback($m)
 	{
 		$m = $m[0];
-		if ($m[0] === "'" || $m[0] === '"') { // string
+		if ($m[0] === "'" || $m[0] === '"' || $m[0] === '/' || $m[0] === '-') { // string or comment
 			return $m;
 
 		} elseif ($m === '?') { // placeholder
@@ -95,20 +99,10 @@ class SqlPreprocessor extends Nette\Object
 			return $this->formatValue($this->params[$this->counter++]);
 
 		} else { // command
-			static $cmds = array(
-				'INSERT' => 'values',
-				'REPLACE' => 'values',
-				'UPDATE' => 'assoc',
-				'WHERE' => 'and',
-				'HAVING' => 'and',
-				'ORDER BY' => 'order',
-				'GROUP BY' => 'order',
-			);
-			$this->arrayMode = $cmds[strtoupper($m)];
+			$this->arrayMode = $this->arrayModes[strtoupper($m)];
 			return $m;
 		}
 	}
-
 
 
 	private function formatValue($value)
@@ -134,7 +128,7 @@ class SqlPreprocessor extends Nette\Object
 		} elseif ($value === NULL) {
 			return 'NULL';
 
-		} elseif ($value instanceof Table\ActiveRow) {
+		} elseif ($value instanceof Table\IRow) {
 			return $value->getPrimary();
 
 		} elseif (is_array($value) || $value instanceof \Traversable) {
@@ -146,7 +140,14 @@ class SqlPreprocessor extends Nette\Object
 
 			if (isset($value[0])) { // non-associative; value, value, value
 				foreach ($value as $v) {
-					$vx[] = $this->formatValue($v);
+					if (is_array($v) && isset($v[0])) { // no-associative; (value), (value), (value)
+						$vx[] = '(' . $this->formatValue($v) . ')';
+					} else {
+						$vx[] = $this->formatValue($v);
+					}
+				}
+				if ($this->arrayMode === 'union') {
+					return implode(' ', $vx);
 				}
 				return implode(', ', $vx);
 
@@ -158,17 +159,36 @@ class SqlPreprocessor extends Nette\Object
 				}
 				return '(' . implode(', ', $kx) . ') VALUES (' . implode(', ', $vx) . ')';
 
+			} elseif ($this->arrayMode === 'select') { // (key, key, ...) SELECT value, value, ...
+				$this->arrayMode = 'union';
+				foreach ($value as $k => $v) {
+					$kx[] = $this->driver->delimite($k);
+					$vx[] = $this->formatValue($v);
+				}
+				return '(' . implode(', ', $kx) . ') SELECT ' . implode(', ', $vx);
+
 			} elseif ($this->arrayMode === 'assoc') { // key=value, key=value, ...
 				foreach ($value as $k => $v) {
-					$vx[] = $this->driver->delimite($k) . '=' . $this->formatValue($v);
+					if (substr($k, -1) === '=') {
+						$k2 = $this->driver->delimite(substr($k, 0, -2));
+						$vx[] = $k2 . '=' . $k2 . ' ' . substr($k, -2, 1) . ' ' . $this->formatValue($v);
+					} else {
+						$vx[] = $this->driver->delimite($k) . '=' . $this->formatValue($v);
+					}
 				}
 				return implode(', ', $vx);
 
 			} elseif ($this->arrayMode === 'multi') { // multiple insert (value, value, ...), ...
-				foreach ($value as $k => $v) {
+				foreach ($value as $v) {
 					$vx[] = $this->formatValue($v);
 				}
 				return '(' . implode(', ', $vx) . ')';
+
+			} elseif ($this->arrayMode === 'union') { // UNION ALL SELECT value, value, ...
+				foreach ($value as $v) {
+					$vx[] = $this->formatValue($v);
+				}
+				return 'UNION ALL SELECT ' . implode(', ', $vx);
 
 			} elseif ($this->arrayMode === 'and') { // (key [operator] value) AND ...
 				foreach ($value as $k => $v) {
@@ -189,7 +209,7 @@ class SqlPreprocessor extends Nette\Object
 				return implode(', ', $vx);
 			}
 
-		} elseif ($value instanceof \DateTime) {
+		} elseif ($value instanceof \DateTime || $value instanceof \DateTimeInterface) {
 			return $this->driver->formatDateTime($value);
 
 		} elseif ($value instanceof SqlLiteral) {

@@ -2,11 +2,7 @@
 
 /**
  * This file is part of the Nette Framework (http://nette.org)
- *
  * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
- *
- * For the full copyright and license information, please view
- * the file license.txt that was distributed with this source code.
  */
 
 namespace Nette\DI;
@@ -14,13 +10,12 @@ namespace Nette\DI;
 use Nette;
 
 
-
 /**
  * The DI helpers.
  *
  * @author     David Grudl
  */
-final class Helpers
+class Helpers
 {
 
 	/**
@@ -79,7 +74,6 @@ final class Helpers
 		}
 		return $res;
 	}
-
 
 
 	/**
@@ -143,7 +137,6 @@ final class Helpers
 	}
 
 
-
 	/**
 	 * Generates list of properties with annotation @inject.
 	 * @return array
@@ -161,7 +154,7 @@ final class Helpers
 
 			} elseif (!class_exists($type) && !interface_exists($type)) {
 				if ($type[0] !== '\\') {
-					$type = $class->getNamespaceName() . '\\' . $type;
+					$type = $property->getDeclaringClass()->getNamespaceName() . '\\' . $type;
 				}
 				if (!class_exists($type) && !interface_exists($type)) {
 					throw new Nette\InvalidStateException("Please use a fully qualified name of class/interface in @var annotation at $property property. Class '$type' cannot be found.");

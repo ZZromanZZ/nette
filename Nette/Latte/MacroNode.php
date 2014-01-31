@@ -2,17 +2,12 @@
 
 /**
  * This file is part of the Nette Framework (http://nette.org)
- *
  * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
- *
- * For the full copyright and license information, please view
- * the file license.txt that was distributed with this source code.
  */
 
 namespace Nette\Latte;
 
 use Nette;
-
 
 
 /**
@@ -44,7 +39,7 @@ class MacroNode extends Nette\Object
 	/** @var bool */
 	public $closing = FALSE;
 
-	/** @var MacroTokenizer */
+	/** @var MacroTokens */
 	public $tokenizer;
 
 	/** @var MacroNode */
@@ -74,7 +69,6 @@ class MacroNode extends Nette\Object
 	public $saved;
 
 
-
 	public function __construct(IMacro $macro, $name, $args = NULL, $modifiers = NULL, self $parentNode = NULL, HtmlNode $htmlNode = NULL, $prefix = NULL)
 	{
 		$this->macro = $macro;
@@ -83,17 +77,15 @@ class MacroNode extends Nette\Object
 		$this->parentNode = $parentNode;
 		$this->htmlNode = $htmlNode;
 		$this->prefix = $prefix;
-		$this->tokenizer = new MacroTokenizer($this->args);
 		$this->data = new \stdClass;
 		$this->setArgs($args);
 	}
 
 
-
 	public function setArgs($args)
 	{
 		$this->args = (string) $args;
-		$this->tokenizer->tokenize($this->args);
+		$this->tokenizer = new MacroTokens($this->args);
 	}
 
 }

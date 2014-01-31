@@ -2,17 +2,12 @@
 
 /**
  * This file is part of the Nette Framework (http://nette.org)
- *
  * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
- *
- * For the full copyright and license information, please view
- * the file license.txt that was distributed with this source code.
  */
 
 namespace Nette\Database;
 
 use Nette;
-
 
 
 /**
@@ -24,19 +19,17 @@ use Nette;
 class SqlLiteral extends Nette\Object
 {
 	/** @var string */
-	private $value = '';
+	private $value;
 
 	/** @var array */
-	private $parameters = array();
+	private $parameters;
 
 
-
-	public function __construct($value)
+	public function __construct($value, array $parameters = array())
 	{
 		$this->value = (string) $value;
-		$this->parameters = array_slice(func_get_args(), 1);
+		$this->parameters = $parameters;
 	}
-
 
 
 	/**
@@ -46,7 +39,6 @@ class SqlLiteral extends Nette\Object
 	{
 		return $this->parameters;
 	}
-
 
 
 	/**

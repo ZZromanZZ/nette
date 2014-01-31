@@ -4,15 +4,13 @@
  * Test: Nette\Diagnostics\Dumper::toText()
  *
  * @author     David Grudl
- * @package    Nette\Diagnostics
  */
 
-use Nette\Diagnostics\Dumper;
-
+use Nette\Diagnostics\Dumper,
+	Tester\Assert;
 
 
 require __DIR__ . '/../bootstrap.php';
-
 
 
 class Test
@@ -48,7 +46,7 @@ Assert::match( '"\\x00"', Dumper::toText("\x00") );
 Assert::match( 'array (5)
    0 => 1
    1 => "hello" (5)
-   2 => array (0)
+   2 => array ()
    3 => array (2)
    |  0 => 1
    |  1 => 2
@@ -64,9 +62,9 @@ Assert::match( 'array (5)
 
 Assert::match( "stream resource\n   wrapper_type%A%", Dumper::toText(fopen(__FILE__, 'r')) );
 
-Assert::match( 'stdClass (0)', Dumper::toText(new stdClass) );
+Assert::match( 'stdClass #%h%', Dumper::toText(new stdClass) );
 
-Assert::match( 'Test (3)
+Assert::match( 'Test #%h%
    x => array (2)
    |  0 => 10
    |  1 => NULL
@@ -84,12 +82,12 @@ $objStorage[$o2] = 'o2';
 $objStorage->next();
 $key = $objStorage->key();
 
-Assert::match( 'SplObjectStorage (2)
+Assert::match( 'SplObjectStorage #%h%
    0 => array (2)
-   |  object => stdClass (0)
+   |  object => stdClass #%h%
    |  data => "o1" (2)
    1 => array (2)
-   |  object => stdClass (1)
+   |  object => stdClass #%h%
    |  |  foo => "bar" (3)
    |  data => "o2" (2)
 ', Dumper::toText($objStorage) );

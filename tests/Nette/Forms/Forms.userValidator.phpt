@@ -4,11 +4,10 @@
  * Test: Nette\Forms user validator.
  *
  * @author     David Grudl
- * @package    Nette\Forms
  */
 
-use Nette\Forms\Form;
-
+use Nette\Forms\Form,
+	Tester\Assert;
 
 
 require __DIR__ . '/../bootstrap.php';
@@ -28,8 +27,8 @@ function myValidator1($item, $arg)
 
 foreach ($datasets as $case) {
 
-	$form = new Form();
-	$control = $form->addText('value', 'Value:', 10)
+	$form = new Form;
+	$control = $form->addText('value', 'Value:')
 		->addRule('myValidator1', 'Value %d is not allowed!', 11)
 		->addRule(~'myValidator1', 'Value %d is required!', 22);
 

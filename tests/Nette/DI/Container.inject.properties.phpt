@@ -4,15 +4,13 @@
  * Test: Nette\DI\ContainerBuilder and injection into properties.
  *
  * @author     David Grudl
- * @package    Nette\DI
  */
 
-use Nette\DI;
-
+use Nette\DI,
+	Tester\Assert;
 
 
 require __DIR__ . '/../bootstrap.php';
-
 
 
 interface IFoo
@@ -44,7 +42,6 @@ class Test2 extends Test1
 }
 
 
-
 $builder = new DI\ContainerBuilder;
 $builder->addDefinition('one')
 	->setClass('stdClass');
@@ -61,7 +58,7 @@ $container = new Container;
 
 $test = new Test2;
 $container->callInjects($test);
-Assert::true( $test->varA instanceof stdClass );
-Assert::true( $test->varB instanceof stdClass );
-Assert::true( $test->varC instanceof stdClass );
-Assert::true( $test->varD instanceof Foo );
+Assert::type( 'stdClass', $test->varA );
+Assert::type( 'stdClass', $test->varB );
+Assert::type( 'stdClass', $test->varC );
+Assert::type( 'Foo', $test->varD );
